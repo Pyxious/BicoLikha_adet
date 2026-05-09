@@ -18,8 +18,8 @@ class Category(models.Model):
 
 class Artist(models.Model):
     artist_id = models.AutoField(primary_key=True, db_column='ARTIST_ID')
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='artist_profile')
     artist_name = models.CharField(max_length=255, db_column='ARTIST_NAME', null=True)
+    artist_email = models.EmailField(db_column='ARTIST_EMAIL', null=True, blank=True)
     artist_phone_num = models.CharField(max_length=20, db_column='ARTIST_PHONE_NUM', null=True)
     artist_description = models.TextField(db_column='ARTIST_DESCRIPTION', null=True)
     artist_municipality = models.CharField(max_length=100, db_column='ARTIST_MUNICIPALITY', null=True)
@@ -116,9 +116,16 @@ class SupplyInventory(models.Model):
 
 class ArtistApplication(models.Model):
     application_id = models.AutoField(primary_key=True, db_column='APPLICATION_ID')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='USER_ID')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, db_column='USER_ID', null=True, blank=True)
+    applicant_name = models.CharField(max_length=255, db_column='APPLICANT_NAME', null=True, blank=True)
+    applicant_email = models.EmailField(db_column='APPLICANT_EMAIL', null=True, blank=True)
+    applicant_phone = models.CharField(max_length=20, db_column='APPLICANT_PHONE', null=True, blank=True)
     artist_name = models.CharField(max_length=255, db_column='ARTIST_NAME')
     artist_image = models.CharField(max_length=255, db_column='ARTIST_IMAGE', null=True, blank=True)
+    artist_description = models.TextField(db_column='ARTIST_DESCRIPTION', null=True, blank=True)
+    artist_municipality = models.CharField(max_length=100, db_column='ARTIST_MUNICIPALITY', null=True, blank=True)
+    artist_brgy = models.CharField(max_length=100, db_column='ARTIST_BRGY', null=True, blank=True)
+    artist_zipcode = models.CharField(max_length=10, db_column='ARTIST_ZIPCODE', null=True, blank=True)
     application_status = models.CharField(max_length=50, db_column='APPLICATION_STATUS', default='Pending')
     date_submitted = models.DateTimeField(auto_now_add=True, db_column='DATE_SUBMITTED')
     date_reviewed = models.DateTimeField(null=True, blank=True, db_column='DATE_REVIEWED')
@@ -129,6 +136,22 @@ class ArtistApplication(models.Model):
     @property
     def artist_image_url(self):
         return f'{settings.MEDIA_URL}{self.artist_image}' if self.artist_image else ''
+
+    @property
+    def applicant_display_name(self):
+        if self.applicant_name:
+            return self.applicant_name
+        if self.user:
+            return self.user.get_full_name() or self.user.username
+        return 'Guest applicant'
+
+    @property
+    def applicant_display_email(self):
+        if self.applicant_email:
+            return self.applicant_email
+        if self.user:
+            return self.user.email
+        return ''
 
 class ArtistApplicationProduct(models.Model):
     application_product_id = models.AutoField(primary_key=True, db_column='APPLICATION_PRODUCT_ID')

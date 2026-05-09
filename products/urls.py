@@ -11,6 +11,7 @@ urlpatterns = [
     path('artist/<int:artist_id>/', views.artist_detail, name='artist_detail'),
     path('about/', views.about, name='about'),
     path('popular/', views.popular, name='popular'),
+    path('apply-artist/', views.artist_application, name='artist_application'),
     path('profile/', views.profile_view, name='profile'),
     path('cart/', views.view_cart, name='view_cart'),
     path('cart/add/<int:product_id>/', views.add_to_cart, name='add_to_cart'),
@@ -40,8 +41,8 @@ urlpatterns = [
 
 
     # --- Authentication ---
-    path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/login/', views.UserLoginView.as_view(), name='login'),
+    path('accounts/', include('django.contrib.auth.urls')),
     path('signup/', views.signup, name='signup'),
 
     

@@ -1,0 +1,386 @@
+{% extends 'products/base.html' %}
+
+{% block content %}
+<style>
+    .apply-shell { max-width: 980px; margin: 44px auto 72px; text-align: left; }
+    .apply-head { display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; margin-bottom: 24px; }
+    .apply-title { color: #5d3a2d; font-size: 2rem; font-weight: 900; margin: 0 0 6px; }
+    .apply-copy { color: #7f675a; margin: 0; max-width: 620px; }
+    .apply-card { background: #fff; border: 1.5px solid #eadfd8; border-radius: 18px; padding: 26px; box-shadow: 0 10px 24px rgba(93, 58, 45, 0.05); margin-bottom: 18px; }
+    .apply-section-title { color: #8d5e4a; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 18px; }
+    .apply-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .apply-grid .full { grid-column: 1 / -1; }
+    .apply-label { color: #7f675a; font-size: 0.78rem; font-weight: 800; margin-bottom: 6px; display: block; }
+    .apply-input { width: 100%; border: 1.5px solid #ddd; border-radius: 10px; padding: 11px 13px; color: #5d3a2d; outline: none; background: #fff; }
+    .apply-input:focus { border-color: #8d5e4a; box-shadow: 0 0 0 4px rgba(141, 94, 74, 0.06); }
+    .apply-submit, .apply-add-btn, .modal-save-btn { background: #8d5e4a; color: #fff; border: none; border-radius: 999px; padding: 12px 22px; font-weight: 900; display: inline-flex; align-items: center; gap: 8px; }
+    .apply-submit:hover, .apply-add-btn:hover, .modal-save-btn:hover { background: #754b39; color: #fff; }
+    .modal-cancel-btn { background: #fff; color: #8d5e4a; border: 1.5px solid #d8c1b6; border-radius: 999px; padding: 10px 18px; font-weight: 800; }
+    .apply-alert { border-radius: 14px; border: 1.5px solid #d9c3b7; padding: 14px 16px; margin-bottom: 18px; color: #5d3a2d; background: #fff8f3; font-weight: 700; }
+    .apply-alert.success { background: #f6ffef; border-color: #b8d59a; color: #4f8e34; }
+    .products-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .products-empty { border: 1.5px dashed #d7c2b8; border-radius: 18px; background: #fffaf7; padding: 34px 24px; text-align: center; color: #8f7c72; }
+    .products-empty i { color: #b98a76; font-size: 1.6rem; margin-bottom: 12px; }
+    .products-empty-title { color: #5d3a2d; font-weight: 900; margin-bottom: 6px; }
+    .products-empty.hidden { display: none; }
+    .products-stack { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+    .product-entry { border: 1.5px solid #eadfd8; border-radius: 18px; padding: 16px; background: #fff; cursor: pointer; transition: 0.2s; }
+    .product-entry:hover { border-color: #8d5e4a; transform: translateY(-1px); }
+    .product-list-card { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+    .product-thumb { width: 84px; height: 84px; border-radius: 16px; border: 1.5px solid #e3d5cd; background: #f7eee8; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #b98a76; }
+    .product-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .product-name { color: #5d3a2d; font-size: 1rem; font-weight: 900; margin: 0; }
+    .product-price { color: #8d5e4a; font-weight: 900; white-space: nowrap; }
+    .product-desc { color: #8f7c72; font-size: 0.82rem; line-height: 1.45; margin: 6px 0 10px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .product-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 7px 12px; background: #f7eee8; color: #7b5647; font-size: 0.75rem; font-weight: 800; margin-right: 6px; }
+    .product-remove-btn { background: #fff; color: #a34d39; border: 1.5px solid #d9b3a6; border-radius: 999px; padding: 9px 14px; font-weight: 800; }
+    .product-remove-btn:hover { background: #a34d39; color: #fff; }
+    .product-modal .modal-content { border-radius: 24px; border: 1.5px solid #eadfd8; background: #fffaf7; }
+    .modal-preview { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 18px; background: #fff8f3; border: 1.5px solid #eadfd8; margin-bottom: 16px; }
+    .modal-preview-thumb { width: 72px; height: 72px; border-radius: 16px; overflow: hidden; background: #f4e5dc; border: 1.5px solid #e3d5cd; display: flex; align-items: center; justify-content: center; color: #b98a76; flex-shrink: 0; }
+    .modal-preview-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .modal-preview-title { color: #5d3a2d; font-weight: 900; margin-bottom: 4px; }
+    .modal-preview-copy { color: #8f7c72; font-size: 0.78rem; line-height: 1.5; }
+    .modal-alert { display: none; border-radius: 14px; border: 1.5px solid #e2b6a7; background: #fff5f0; color: #9b4f39; font-size: 0.82rem; font-weight: 700; padding: 12px 14px; margin-bottom: 16px; }
+    .modal-alert.show { display: block; }
+    @media (max-width: 767px) {
+        .apply-shell { margin: 28px 16px 56px; }
+        .apply-head { display: block; }
+        .apply-grid { grid-template-columns: 1fr; }
+        .product-list-card { grid-template-columns: 72px minmax(0, 1fr); }
+        .product-tools { grid-column: 1 / -1; justify-self: end; }
+    }
+</style>
+
+<div class="apply-shell">
+    <div class="apply-head">
+        <div>
+            <h1 class="apply-title">Apply as Artist</h1>
+            <p class="apply-copy">Submit artist details and sample products for admin review. Approval creates a public artist profile, not a user account role.</p>
+        </div>
+        {% if not user.is_authenticated %}
+            <a href="{% url 'login' %}" class="text-decoration-none small fw-bold" style="color:#8d5e4a;">Already have an account?</a>
+        {% endif %}
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="apply-alert {% if message.tags == 'success' %}success{% endif %}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" id="artistApplicationForm" onsubmit="return validateApplicationProducts()">
+        {% csrf_token %}
+
+        <div class="apply-card">
+            <div class="apply-section-title">Applicant Information</div>
+            <div class="apply-grid">
+                <div>
+                    <label class="apply-label">Full Name</label>
+                    <input type="text" name="applicant_name" class="apply-input" value="{{ initial_name }}" required>
+                </div>
+                <div>
+                    <label class="apply-label">Email</label>
+                    <input type="email" name="applicant_email" class="apply-input" value="{{ initial_email }}" required>
+                </div>
+                <div>
+                    <label class="apply-label">Phone Number</label>
+                    <input type="text" name="applicant_phone" class="apply-input" value="{{ initial_phone }}" required>
+                </div>
+                <div>
+                    <label class="apply-label">Artist Name</label>
+                    <input type="text" name="artist_name" class="apply-input" value="{{ initial_name }}" required>
+                </div>
+                <div>
+                    <label class="apply-label">Municipality</label>
+                    <input type="text" name="artist_municipality" class="apply-input" value="{{ initial_municipality }}" required>
+                </div>
+                <div>
+                    <label class="apply-label">Barangay</label>
+                    <input type="text" name="artist_brgy" class="apply-input" value="{{ initial_brgy }}" required>
+                </div>
+                <div>
+                    <label class="apply-label">ZIP Code</label>
+                    <input type="text" name="artist_zipcode" class="apply-input" value="{{ initial_zipcode }}" required>
+                </div>
+                <div class="full">
+                    <label class="apply-label">Artist Profile Photo</label>
+                    <input type="file" name="artist_image" class="apply-input" accept="image/*">
+                </div>
+                <div class="full">
+                    <label class="apply-label">Artist Description</label>
+                    <textarea name="artist_description" class="apply-input" rows="4" required></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="apply-card">
+            <div class="products-head mb-3">
+                <div>
+                    <div class="apply-section-title mb-1">Product Submissions</div>
+                    <div class="small text-muted">Add products one at a time. Saved products appear in the list below before final submission.</div>
+                </div>
+                <button type="button" class="apply-add-btn" onclick="openProductModalForNew()">
+                    <i class="fas fa-plus"></i>Add Product
+                </button>
+            </div>
+
+            <div class="products-empty" id="productsEmpty">
+                <i class="fas fa-box-open"></i>
+                <div class="products-empty-title">No products added yet</div>
+                <div>Add at least one product using the button above.</div>
+            </div>
+
+            <div class="products-stack" id="productsStack"></div>
+
+            <div class="d-flex justify-content-end mt-4">
+                <button type="submit" class="apply-submit">
+                    <i class="fas fa-paper-plane"></i>Submit Application
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="modal fade product-modal" id="productModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <div>
+                    <h5 class="modal-title fw-bold" style="color:#5d3a2d;">Add Product Submission</h5>
+                    <div class="small text-muted">Fill in one product, save it, then add another if needed.</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-alert" id="productModalAlert"></div>
+                <div class="modal-preview">
+                    <div class="modal-preview-thumb" id="productPreviewThumb"><i class="fas fa-image"></i></div>
+                    <div>
+                        <div class="modal-preview-title" id="productPreviewTitle">Product preview will appear here</div>
+                        <div class="modal-preview-copy" id="productPreviewCopy">Save this product to add it to your application list.</div>
+                    </div>
+                </div>
+
+                <div class="apply-grid">
+                    <input type="hidden" id="editingProductKey" value="">
+                    <div class="full">
+                        <label class="apply-label">Product Name</label>
+                        <input type="text" id="draftName" class="apply-input">
+                    </div>
+                    <div>
+                        <label class="apply-label">Price</label>
+                        <input type="number" id="draftPrice" class="apply-input" min="0" step="0.01">
+                    </div>
+                    <div>
+                        <label class="apply-label">Stock</label>
+                        <input type="number" id="draftStock" class="apply-input" min="0">
+                    </div>
+                    <div class="full">
+                        <label class="apply-label">Product Image</label>
+                        <input type="file" id="draftImage" class="apply-input" accept="image/*">
+                    </div>
+                    <div>
+                        <label class="apply-label">Choose Existing Category</label>
+                        <select id="draftCategory" class="apply-input">
+                            <option value="">Select category</option>
+                            {% for category in application_categories %}
+                                <option value="{{ category.category_id }}">{{ category.category_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="apply-label">Request New Category</label>
+                        <input type="text" id="draftNewCategory" class="apply-input" placeholder="Only if needed">
+                    </div>
+                    <div class="full">
+                        <label class="apply-label">Description</label>
+                        <textarea id="draftDescription" class="apply-input" rows="4"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="modal-cancel-btn" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="modal-save-btn" onclick="saveDraftProduct()">
+                    <i class="fas fa-check"></i>Save Product
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let productKey = 0;
+
+function showProductModalAlert(message) {
+    const alertBox = document.getElementById('productModalAlert');
+    alertBox.innerText = message;
+    alertBox.classList.add('show');
+}
+
+function clearProductModalAlert() {
+    const alertBox = document.getElementById('productModalAlert');
+    alertBox.innerText = '';
+    alertBox.classList.remove('show');
+}
+
+function openProductModalForNew() {
+    clearProductModalAlert();
+    document.getElementById('editingProductKey').value = '';
+    ['draftName', 'draftPrice', 'draftStock', 'draftCategory', 'draftNewCategory', 'draftDescription', 'draftImage'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    document.getElementById('productPreviewThumb').innerHTML = '<i class="fas fa-image"></i>';
+    document.getElementById('productPreviewTitle').innerText = 'Product preview will appear here';
+    document.getElementById('productPreviewCopy').innerText = 'Save this product to add it to your application list.';
+    new bootstrap.Modal(document.getElementById('productModal')).show();
+}
+
+function editDraftProduct(key) {
+    const entry = document.querySelector(`.product-entry[data-product-key="${key}"]`);
+    if (!entry) return;
+    clearProductModalAlert();
+
+    document.getElementById('editingProductKey').value = key;
+    document.getElementById('draftName').value = entry.querySelector(`input[name="prod_name_${key}"]`).value;
+    document.getElementById('draftPrice').value = entry.querySelector(`input[name="prod_price_${key}"]`).value;
+    document.getElementById('draftStock').value = entry.querySelector(`input[name="prod_stock_qty_${key}"]`).value;
+    document.getElementById('draftCategory').value = entry.querySelector(`input[name="category_id_${key}"]`).value;
+    document.getElementById('draftNewCategory').value = entry.querySelector(`input[name="new_category_${key}"]`).value;
+    document.getElementById('draftDescription').value = entry.querySelector(`textarea[name="prod_description_${key}"]`).value;
+
+    const imgData = entry.querySelector(`input[name="prod_image_data_${key}"]`) ? entry.querySelector(`input[name="prod_image_data_${key}"]`).value : '';
+    document.getElementById('productPreviewTitle').innerText = document.getElementById('draftName').value;
+    document.getElementById('productPreviewThumb').innerHTML = imgData ? `<img src="${imgData}" alt="">` : '<i class="fas fa-image"></i>';
+    new bootstrap.Modal(document.getElementById('productModal')).show();
+}
+
+function saveDraftProduct() {
+    const editingKey = document.getElementById('editingProductKey').value;
+    const name = document.getElementById('draftName').value.trim();
+    const price = document.getElementById('draftPrice').value;
+    const stock = document.getElementById('draftStock').value;
+    const categorySelect = document.getElementById('draftCategory');
+    const categoryId = categorySelect.value;
+    const categoryName = categoryId ? categorySelect.options[categorySelect.selectedIndex].text : '';
+    const newCategory = document.getElementById('draftNewCategory').value.trim();
+    const description = document.getElementById('draftDescription').value.trim();
+    const imageInput = document.getElementById('draftImage');
+
+    if (!name || !price || stock === '') {
+        showProductModalAlert('Please complete the product name, price, and stock before saving.');
+        return;
+    }
+    if (!categoryId && !newCategory) {
+        showProductModalAlert('Please choose a category or request a new category.');
+        return;
+    }
+
+    let key = editingKey;
+    let isNew = false;
+    if (!key) {
+        productKey += 1;
+        key = productKey;
+        isNew = true;
+    }
+
+    const summaryCategory = newCategory || categoryName || 'No category';
+    const htmlContent = `
+<div class="product-list-card">
+    <div class="product-thumb" id="thumb-${key}"><i class="fas fa-image"></i></div>
+    <div>
+        <div class="d-flex justify-content-between gap-3">
+            <h4 class="product-name">${escapeHtml(name)}</h4>
+            <div class="product-price">PHP ${Number(price).toFixed(2)}</div>
+        </div>
+        <div class="product-desc">${escapeHtml(description)}</div>
+        <span class="product-pill"><i class="fas fa-tag"></i>${escapeHtml(summaryCategory)}</span>
+        <span class="product-pill"><i class="fas fa-box"></i>${escapeHtml(stock)} stock</span>
+    </div>
+    <div class="product-tools">
+        <button type="button" class="product-remove-btn" onclick="event.stopPropagation(); this.closest('.product-entry').remove(); updateProductsEmptyState();">
+            <i class="fas fa-trash-alt me-1"></i>Remove
+        </button>
+    </div>
+</div>
+<div style="display:none">
+    <input type="hidden" name="product_key" value="${key}">
+    <input type="hidden" name="prod_name_${key}" value="${escapeAttr(name)}">
+    <input type="hidden" name="prod_price_${key}" value="${escapeAttr(price)}">
+    <input type="hidden" name="prod_stock_qty_${key}" value="${escapeAttr(stock)}">
+    <input type="hidden" name="category_id_${key}" value="${escapeAttr(categoryId)}">
+    <input type="hidden" name="new_category_${key}" value="${escapeAttr(newCategory)}">
+    <textarea name="prod_description_${key}">${escapeHtml(description)}</textarea>
+</div>`;
+
+    let entry;
+    if (isNew) {
+        entry = document.createElement('div');
+        entry.className = 'product-entry';
+        entry.setAttribute('data-product-key', key);
+        entry.onclick = function() { editDraftProduct(key); };
+        document.getElementById('productsStack').appendChild(entry);
+    } else {
+        entry = document.querySelector(`.product-entry[data-product-key="${key}"]`);
+    }
+
+    const existingImgData = entry.querySelector(`input[name="prod_image_data_${key}"]`) ? entry.querySelector(`input[name="prod_image_data_${key}"]`).value : '';
+    entry.innerHTML = htmlContent;
+
+    if (imageInput.files && imageInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            appendImageData(entry, key, e.target.result, imageInput.files[0].name);
+        };
+        reader.readAsDataURL(imageInput.files[0]);
+    } else if (existingImgData) {
+        appendImageData(entry, key, existingImgData, '');
+    }
+
+    updateProductsEmptyState();
+    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('productModal'));
+    if (modalInstance) modalInstance.hide();
+}
+
+function appendImageData(entry, key, imageData, filename) {
+    const hiddenWrap = entry.querySelector('div[style="display:none"]');
+    const hiddenImg = document.createElement('input');
+    hiddenImg.type = 'hidden';
+    hiddenImg.name = `prod_image_data_${key}`;
+    hiddenImg.value = imageData;
+    hiddenWrap.appendChild(hiddenImg);
+
+    const hiddenFilename = document.createElement('input');
+    hiddenFilename.type = 'hidden';
+    hiddenFilename.name = `prod_image_filename_${key}`;
+    hiddenFilename.value = filename || '';
+    hiddenWrap.appendChild(hiddenFilename);
+
+    document.getElementById(`thumb-${key}`).innerHTML = `<img src="${imageData}" alt="">`;
+}
+
+function updateProductsEmptyState() {
+    const isEmpty = document.getElementById('productsStack').children.length === 0;
+    document.getElementById('productsEmpty').classList.toggle('hidden', !isEmpty);
+}
+
+function validateApplicationProducts() {
+    if (document.getElementById('productsStack').children.length === 0) {
+        alert('Please add at least one product before submitting your application.');
+        return false;
+    }
+    return true;
+}
+
+function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function(char) {
+        return ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'})[char];
+    });
+}
+
+function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, '&#096;');
+}
+</script>
+{% endblock %}

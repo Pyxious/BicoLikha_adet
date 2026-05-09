@@ -776,7 +776,7 @@ letter-spacing: 0.05em;
 background: #f5efe9;
 color: #8d5e4a;
 }
-.artist-order-status.waiting-for-courier {
+.artist-order-status.prepared {
 background: #eef5ff;
 color: #1f78d1;
 }
@@ -1102,20 +1102,6 @@ min-width: 0;
                 <i class="far fa-bell"></i> Notifications
                 {% if unread_count > 0 %}<span class="badge bg-danger ms-auto rounded-pill" style="font-size: 0.6rem; padding: 4px 8px;">{{ unread_count }}</span>{% endif %}
             </a>
-            {% if not is_artist %}
-            <a href="?tab=artist_application" class="sidebar-link {% if active_tab == 'artist_application' %}active{% endif %}">
-                <i class="fas fa-store"></i> Start Selling
-            </a>
-            {% endif %}
-            {% if is_artist %}
-            <a href="?tab=artist_products" class="sidebar-link {% if active_tab == 'artist_products' %}active{% endif %}">
-                <i class="fas fa-boxes"></i> My Products
-            </a>
-            <a href="?tab=messages" class="sidebar-link {% if active_tab == 'messages' %}active{% endif %}">
-                <i class="fas fa-envelope"></i> Artist Notifications
-                {% if unread_artist_count > 0 %}<span class="badge bg-danger ms-auto rounded-pill" style="font-size: 0.6rem;">NEW</span>{% endif %}
-            </a>
-            {% endif %}
         </nav>
 
         <button type="button" class="btn btn-logout-pill mt-auto" data-bs-toggle="modal" data-bs-target="#logoutConfirmModal">LOGOUT</button>
@@ -1196,203 +1182,12 @@ min-width: 0;
                 </div>
             </form>
 
-            {% if not is_artist %}
             <div class="artist-cta-card text-start">
-                <div class="artist-cta-title">Start selling on bicolikha</div>
-                <div class="artist-cta-copy">Apply as an artist and submit your first products in one application. Your account and uploaded works will stay pending until management approves them.</div>
-                <a href="?tab=artist_application" class="artist-cta-btn">
-                    <i class="fas fa-store me-2"></i>Become an Artist
+                <div class="artist-cta-title">Apply as artist</div>
+                <div class="artist-cta-copy">Submit artist details and sample products for admin review. Approval creates a public artist profile without changing your customer account.</div>
+                <a href="{% url 'artist_application' %}" class="artist-cta-btn">
+                    <i class="fas fa-palette me-2"></i>Apply as Artist
                 </a>
-            </div>
-            {% endif %}
-
-        {% elif active_tab == 'artist_application' %}
-            <div class="artist-application-shell text-start">
-                <div class="artist-application-head">
-                    <div>
-                        <h2 class="fw-bold m-0" style="color:#5d3a2d;">Artist Application</h2>
-                        <p class="artist-help-text mb-0">Submit your artist profile name and the products you want management to review. Nothing goes live until the admin approves it.</p>
-                    </div>
-                    {% if latest_artist_application %}
-                    <div class="artist-application-status {{ latest_artist_application.application_status|lower }}">
-                        <i class="fas fa-hourglass-half"></i>
-                        {{ latest_artist_application.application_status }}
-                    </div>
-                    {% endif %}
-                </div>
-
-                {% if latest_artist_application and latest_artist_application.application_status == 'Pending' %}
-                <div class="artist-cta-card text-start mb-0">
-                    <div class="artist-cta-title">Application already submitted</div>
-                    <div class="artist-cta-copy mb-0">We already received your latest artist application on {{ latest_artist_application.date_submitted|date:"F d, Y h:i A" }}. Please wait for management to review it before sending another one.</div>
-                </div>
-                {% else %}
-                <form method="POST" enctype="multipart/form-data" id="artistApplicationForm">
-                    {% csrf_token %}
-                    <input type="hidden" name="submit_artist_application" value="1">
-
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="small fw-bold text-muted">Artist Name</label>
-                            <input type="text" name="artist_name" class="bicol-input" value="{{ user.get_full_name|default:user.username }}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="small fw-bold text-muted">Applicant Account</label>
-                            <input type="text" class="bicol-input" value="{{ user.email }}" readonly>
-                        </div>
-                        <div class="col-12">
-                            <label class="small fw-bold text-muted">Artist Profile Photo</label>
-                            <div class="artist-profile-upload">
-                                <div class="artist-profile-preview" id="artistProfilePreview">
-                                    <i class="fas fa-user"></i>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <input type="file" name="artist_image" id="artist_image_input" class="form-control artist-profile-file" accept="image/*" onchange="previewArtistProfileImage(this)">
-                                    <div class="artist-help-text mb-0 mt-2">This will be used as your public artist photo after approval.</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
-                        <div class="artist-products-head w-100">
-                            <span class="form-section-title mb-0 border-0 p-0">PRODUCT SUBMISSIONS</span>
-                            <button type="button" class="artist-add-product-btn" id="addArtistProductBtn" onclick="openArtistModalForNew()">
-                                <i class="fas fa-plus me-2"></i>Add Product
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="artist-empty-products" id="artistProductsEmpty">
-                        <i class="fas fa-box-open"></i>
-                        <div class="artist-empty-products-title">No products added yet</div>
-                        <div>Add your pieces one by one. Each saved item will appear below as a clean review list before you submit the whole application.</div>
-                    </div>
-
-                    <div class="artist-products-stack mt-3" id="artistProductsStack">
-                    </div>
-
-                    <div class="mt-4 d-flex justify-content-end">
-                        <button type="submit" class="artist-application-submit">
-                            <i class="fas fa-paper-plane me-2"></i>Submit Application
-                        </button>
-                    </div>
-                </form>
-                {% endif %}
-            </div>
-
-        {% elif active_tab == 'artist_products' and is_artist %}
-            <div class="artist-stock-shell text-start">
-                <div class="artist-application-head">
-                    <div>
-                        <h2 class="fw-bold m-0" style="color:#5d3a2d;">My Products</h2>
-                        <p class="artist-help-text mb-0">Request stock changes for approved products, or submit a new product for management approval.</p>
-                    </div>
-                    <button type="button" class="artist-add-product-btn" onclick="openArtistModalForNew()" {% if latest_artist_application and latest_artist_application.application_status == 'Pending' %}disabled{% endif %}>
-                        <i class="fas fa-plus me-2"></i>Add New Product
-                    </button>
-                </div>
-
-                {% if latest_artist_application and latest_artist_application.application_status == 'Pending' %}
-                <div class="artist-cta-card text-start mt-0 mb-4">
-                    <div class="artist-cta-title">Product submission pending</div>
-                    <div class="artist-cta-copy mb-0">Your latest product submission from {{ latest_artist_application.date_submitted|date:"F d, Y h:i A" }} is waiting for admin review.</div>
-                </div>
-                {% endif %}
-
-                <form method="POST" class="artist-stock-card mb-4">
-                    {% csrf_token %}
-                    <input type="hidden" name="update_artist_stock" value="1">
-                    <div class="artist-stock-grid">
-                        <div>
-                            <label class="small fw-bold text-muted">Product Name</label>
-                            <select name="product_id" class="bicol-input mb-0" required>
-                                <option value="">Select product</option>
-                                {% for product in artist_product_options %}
-                                <option value="{{ product.prod_id }}">{{ product.title }} - current stock: {{ product.stock_qty|default:0 }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="small fw-bold text-muted">Quantity</label>
-                            <input type="number" name="stock_qty" min="1" class="bicol-input mb-0" required>
-                        </div>
-                        <button type="submit" name="add_stock" class="artist-stock-btn primary">
-                            <i class="fas fa-plus me-2"></i> Add
-                        </button>
-                        <button type="submit" name="subtract_stock" class="artist-stock-btn">
-                            <i class="fas fa-minus me-2"></i> Minus
-                        </button>
-                    </div>
-                </form>
-
-                <span class="form-section-title">APPROVED PRODUCTS</span>
-                {% if artist_products %}
-                <table class="artist-product-table">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Category</th>
-                            <th>Price</th>
-                            <th>Stock</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for product in artist_products %}
-                        <tr>
-                            <td>{{ product.title }}</td>
-                            <td>{{ product.category.category_name|default:"Uncategorized" }}</td>
-                            <td>&#8369;{{ product.price|floatformat:2 }}</td>
-                            <td>{{ product.stock_qty|default:0 }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% if artist_products_page.paginator.num_pages > 1 %}
-                <div class="profile-pagination">
-                    <div class="small fw-bold">Page {{ artist_products_page.number }} of {{ artist_products_page.paginator.num_pages }}</div>
-                    <div class="d-flex gap-2 flex-wrap">
-                        {% if artist_products_page.has_previous %}
-                        <a class="profile-page-link" href="?tab=artist_products&artist_products_page={{ artist_products_page.previous_page_number }}">Prev</a>
-                        {% endif %}
-                        {% for page_num in artist_products_page.paginator.page_range %}
-                            {% if page_num == artist_products_page.number %}
-                            <span class="profile-page-current">{{ page_num }}</span>
-                            {% elif page_num >= artist_products_page.number|add:'-2' and page_num <= artist_products_page.number|add:'2' %}
-                            <a class="profile-page-link" href="?tab=artist_products&artist_products_page={{ page_num }}">{{ page_num }}</a>
-                            {% endif %}
-                        {% endfor %}
-                        {% if artist_products_page.has_next %}
-                        <a class="profile-page-link" href="?tab=artist_products&artist_products_page={{ artist_products_page.next_page_number }}">Next</a>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-                {% else %}
-                <div class="artist-empty-products">
-                    <i class="fas fa-box-open"></i>
-                    <div class="artist-empty-products-title">No approved products yet</div>
-                    <div>Add a product submission and wait for admin approval before it appears in your product list.</div>
-                </div>
-                {% endif %}
-
-                {% if not latest_artist_application or latest_artist_application.application_status != 'Pending' %}
-                <form method="POST" enctype="multipart/form-data" id="artistApplicationForm">
-                    {% csrf_token %}
-                    <input type="hidden" name="submit_artist_product_application" value="1">
-                    <div class="artist-products-stack mt-3" id="artistProductsStack"></div>
-                    <div class="artist-empty-products hidden" id="artistProductsEmpty">
-                        <i class="fas fa-box-open"></i>
-                        <div class="artist-empty-products-title">No products added yet</div>
-                        <div>Use Add New Product to prepare an item for admin approval.</div>
-                    </div>
-                    <div class="mt-4 d-flex justify-content-end">
-                        <button type="submit" class="artist-application-submit">
-                            <i class="fas fa-paper-plane me-2"></i>Submit New Product For Approval
-                        </button>
-                    </div>
-                </form>
-                {% endif %}
             </div>
 
         {% elif active_tab == 'purchases' %}
@@ -1437,8 +1232,8 @@ min-width: 0;
                                         {{ group.status }}
                                         {% if group.status == 'Processing' %}
                                             <i class="fas fa-brush"></i>
-                                        {% elif group.status == 'Waiting for Courier' %}
-                                            <i class="fas fa-clock"></i>
+                                        {% elif group.status == 'Prepared' %}
+                                            <i class="fas fa-box"></i>
                                         {% elif group.status == 'Shipped' %}
                                             <i class="fas fa-truck"></i>
                                         {% elif group.status == 'Delivered' %}
@@ -1516,96 +1311,11 @@ min-width: 0;
             <div class="notification-empty">
                 <i class="far fa-bell"></i>
                 <div class="notification-empty-title">No notifications yet</div>
-                <div class="small">Order updates and artist status messages will appear here.</div>
+                <div class="small">Order updates will appear here.</div>
             </div>
             {% endfor %}
 
-        {% elif active_tab == 'messages' %}
-            <h2 class="fw-bold mb-4 text-start" style="color: #5d3a2d;">Artist Notifications</h2>
-            {% for msg in artist_messages %}
-<div class="artist-message-card mb-3 text-start">
-<div class="card-body p-4">
-<div class="d-flex justify-content-between align-items-start">
-<div class="flex-grow-1">
-<span class="artist-message-badge mb-2">Order Update</span>
-<h6 class="fw-bold mb-1">Order #BK-{{ msg.order.order_id }}</h6>
-<p class="text-muted small mb-0">{{ msg.message_text }}</p>
-{% if msg.artist_items %}
-<div class="d-flex flex-wrap gap-3 mt-3">
-{% for item in msg.artist_items %}
-<div class="text-center">
-<div class="position-relative">
-<div style="width:64px; height:64px; border-radius:14px; overflow:hidden; border:2px solid #8d5e4a; background:#e9fcd9;">
-{% if item.product.image %}
-<img src="{{ item.product.image.url }}" alt="{{ item.product.title }}" style="width:100%; height:100%; object-fit:cover;">
-{% endif %}
-</div>
-<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" style="background:#8d5e4a; font-size:0.65rem;">{{ item.quantity }}</span>
-</div>
-<div class="small fw-bold mt-2" style="color:#5d3a2d; max-width:80px; line-height:1.2;">{{ item.product.title }}</div>
-</div>
-{% endfor %}
-</div>
-{% endif %}
-</div>
-<div class="text-end ms-4">
-<div class="small text-muted mb-3" style="font-size: 0.7rem;">{{ msg.timestamp|timesince }} ago</div>
 
-{% if msg.order.status == 'Cancelled' %}
-    <span class="artist-status-chip cancelled">
-        <i class="fas fa-ban me-1"></i> ORDER CANCELLED
-    </span>
-
-{% elif msg.order.status == 'Delivered' %}
-    <!-- STAGE 4: Final Completed State -->
-    <div class="d-flex flex-column align-items-end">
-        <span class="artist-status-chip delivered mb-1">
-            <i class="fas fa-check-double me-1"></i> ITEM DELIVERED
-        </span>
-        <div class="fw-bold" style="color: #8d5e4a;">Earnings: ₱{{ msg.artist_subtotal|floatformat:2 }}</div>
-    </div>
-
-{% elif msg.current_artist_status == 'Shipped!' %}
-    <!-- STAGE 3: Artist has shipped, waiting for customer -->
-    <span class="artist-status-chip shipped">
-        <i class="fas fa-truck me-1"></i> SHIPPED (WAITING FOR CUSTOMER)
-    </span>
-
-{% else %}
-    <!-- ACTION BUTTONS -->
-    <form method="POST">
-        {% csrf_token %}
-        <input type="hidden" name="notif_id" value="{{ msg.id }}">
-        <input type="hidden" name="artist_update_status" value="1">
-        
-        <div class="d-flex gap-2">
-            <!-- Button 1: Waiting for Courier (Disable if already clicked) -->
-            {% if msg.current_artist_status == 'Waiting for Courier' %}
-                <button type="button" class="artist-action-btn disabled" disabled>
-                    <i class="fas fa-clock me-1"></i> Waiting for Courier...
-                </button>
-            {% else %}
-                <button type="submit" name="status_val" value="Waiting for Courier" 
-                        class="artist-action-btn">
-                    Waiting for Courier
-                </button>
-            {% endif %}
-            
-            <!-- Button 2: Shipped! (Always active until clicked) -->
-            <button type="submit" name="status_val" value="Shipped!" 
-                    class="artist-action-btn primary">
-                Shipped!
-            </button>
-        </div>
-    </form>
-{% endif %}
-</div>
-</div>
-</div>
-</div>
-{% empty %}
-<div class="text-center py-5 opacity-50"><p>No notifications from management.</p></div>
-{% endfor %}
 {% endif %}
 </div>
 </div>
@@ -1629,83 +1339,6 @@ min-width: 0;
 </div>
 </div>
 </div>
-{% if active_tab == 'artist_application' and not is_artist or active_tab == 'artist_products' and is_artist %}
-{% if not latest_artist_application or latest_artist_application.application_status != 'Pending' %}
-<div class="modal fade artist-application-modal" id="artistProductModal" tabindex="-1" aria-hidden="true">
-<div class="modal-dialog modal-dialog-centered modal-lg">
-<div class="modal-content">
-<div class="modal-header">
-<div>
-<h5 class="modal-title fw-bold" style="color:#5d3a2d;">{% if is_artist %}Add New Product For Approval{% else %}Add Product Submission{% endif %}</h5>
-<div class="artist-help-text mb-0">Fill in one product, save it to the list, then add another if needed.</div>
-</div>
-<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-</div>
-<div class="modal-body">
-<div class="artist-modal-alert" id="artistProductModalAlert"></div>
-<div class="artist-modal-preview mb-3">
-                <div class="artist-modal-preview-thumb" id="artistProductPreviewThumb">
-                    <i class="fas fa-image"></i>
-                </div>
-                <div>
-                    <div class="artist-modal-preview-title" id="artistProductPreviewTitle">Your product preview will appear here</div>
-                    <div class="artist-modal-preview-copy" id="artistProductPreviewCopy">Use the popup to fill in the product name, category, price, stock, image, and description. Once saved, it will be added to your compact product list.</div>
-                </div>
-            </div>
-
-            <div class="artist-modal-grid" id="artistProductDraftForm">
-                <input type="hidden" id="artistEditingKey" value="">
-                <div class="full">
-                    <label class="small fw-bold text-muted">Product Name</label>
-                    <input type="text" id="artistDraftName" class="bicol-input" required>
-                </div>
-                <div>
-                    <label class="small fw-bold text-muted">Price</label>
-                    <input type="number" id="artistDraftPrice" step="0.01" min="0" class="bicol-input" required>
-                </div>
-                <div>
-                    <label class="small fw-bold text-muted">Stock</label>
-                    <input type="number" id="artistDraftStock" min="0" class="bicol-input" required>
-                </div>
-                <div class="full">
-                    <label class="small fw-bold text-muted">Product Image</label>
-                    <div class="artist-file-picker-wrap" id="artistProductImageField">
-                        <input type="file" id="artistDraftImage" class="artist-file-input" accept="image/*">
-                        <span class="artist-file-name" id="artistDraftImageName">No photo selected</span>
-                    </div>
-                    <div class="artist-modal-helper">Optional, but highly recommended so admin can review the artwork properly.</div>
-                </div>
-                <div>
-                    <label class="small fw-bold text-muted">Choose Existing Category</label>
-                    <select id="artistDraftCategory" class="bicol-input">
-                        <option value="">Select a category</option>
-                        {% for category in application_categories %}
-                        <option value="{{ category.category_id }}" data-category-name="{{ category.category_name }}">{{ category.category_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label class="small fw-bold text-muted">Request New Category</label>
-                    <input type="text" id="artistDraftNewCategory" class="bicol-input" placeholder="Only if the dropdown doesn't have it">
-                    <div class="artist-modal-helper">If you fill this in, the admin will review it as a requested new category.</div>
-                </div>
-                <div class="full">
-                    <label class="small fw-bold text-muted">Description</label>
-                    <textarea id="artistDraftDescription" class="bicol-input" rows="4" style="resize:vertical;"></textarea>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="artist-modal-cancel" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="artist-modal-save" id="saveArtistProductBtn" onclick="saveArtistDraftProduct()">
-                <i class="fas fa-check me-2"></i>Save Product
-            </button>
-        </div>
-    </div>
-</div>
-</div>
-{% endif %}
-{% endif %}
 <!-- ADD ADDRESS MODAL -->
 <div class="modal fade" id="addAddressModal" tabindex="-1">
 <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -1875,16 +1508,6 @@ reader.readAsDataURL(input.files[0]);
 }
 }
 
-function previewArtistProfileImage(input) {
-if (input.files && input.files[0]) {
-var reader = new FileReader();
-reader.onload = function(e) {
-document.getElementById('artistProfilePreview').innerHTML = '<img src="' + e.target.result + '" alt="Artist profile preview">';
-}
-reader.readAsDataURL(input.files[0]);
-}
-}
-
 document.addEventListener('shown.bs.modal', function (event) {
 const modal = event.target;
 const mapDiv = modal.querySelector('.map-container');
@@ -1908,155 +1531,5 @@ const iF = fInput.value; const iL = lInput.value; const iP = pInput.value;
 function c() { sBtn.disabled = (fInput.value.trim() === iF && lInput.value.trim() === iL && pInput.value.trim() === iP); }
 fInput.addEventListener('input', c); lInput.addEventListener('input', c); pInput.addEventListener('input', c);
 }
-
-
-let artistProductKey = 0;
-
-function openArtistModalForNew() {
-document.getElementById('artistEditingKey').value = '';
-['artistDraftName','artistDraftPrice','artistDraftStock','artistDraftCategory','artistDraftNewCategory','artistDraftDescription','artistDraftImage'].forEach(id => {
-const el = document.getElementById(id);
-if (el) el.value = '';
-});
-document.getElementById('artistProductPreviewThumb').innerHTML = '<i class="fas fa-image"></i>';
-document.getElementById('artistProductPreviewTitle').innerText = 'Your product preview will appear here';
-document.getElementById('artistProductPreviewCopy').innerText = 'Use the popup to fill in the product name, category, price, stock, image, and description.';
-
-const modalEl = document.getElementById('artistProductModal');
-const modalInstance = new bootstrap.Modal(modalEl);
-modalInstance.show();
-}
-
-function editArtistDraftProduct(key) {
-const entry = document.querySelector(`.artist-product-entry[data-product-key="${key}"]`);
-if (!entry) return;
-
-document.getElementById('artistEditingKey').value = key;
-document.getElementById('artistDraftName').value = entry.querySelector(`input[name="prod_name_${key}"]`).value;
-document.getElementById('artistDraftPrice').value = entry.querySelector(`input[name="prod_price_${key}"]`).value;
-document.getElementById('artistDraftStock').value = entry.querySelector(`input[name="prod_stock_qty_${key}"]`).value;
-document.getElementById('artistDraftCategory').value = entry.querySelector(`input[name="category_id_${key}"]`).value;
-document.getElementById('artistDraftNewCategory').value = entry.querySelector(`input[name="new_category_${key}"]`).value;
-document.getElementById('artistDraftDescription').value = entry.querySelector(`textarea[name="prod_description_${key}"]`).value;
-
-// Update modal preview info
-document.getElementById('artistProductPreviewTitle').innerText = document.getElementById('artistDraftName').value;
-const imgData = entry.querySelector(`input[name="prod_image_data_${key}"]`) ? entry.querySelector(`input[name="prod_image_data_${key}"]`).value : '';
-if (imgData) {
-document.getElementById('artistProductPreviewThumb').innerHTML = `<img src="${imgData}" style="width:100%; height:100%; object-fit:cover;">`;
-} else {
-document.getElementById('artistProductPreviewThumb').innerHTML = '<i class="fas fa-image"></i>';
-}
-
-const modalEl = document.getElementById('artistProductModal');
-const modalInstance = new bootstrap.Modal(modalEl);
-modalInstance.show();
-}
-
-function saveArtistDraftProduct() {
-const editingKey = document.getElementById('artistEditingKey').value;
-const name = document.getElementById('artistDraftName').value;
-const price = document.getElementById('artistDraftPrice').value;
-const stock = document.getElementById('artistDraftStock').value;
-const categoryId = document.getElementById('artistDraftCategory').value;
-const categoryName = categoryId ? document.getElementById('artistDraftCategory').options[document.getElementById('artistDraftCategory').selectedIndex].text : '';
-const newCategory = document.getElementById('artistDraftNewCategory').value;
-const description = document.getElementById('artistDraftDescription').value;
-const imageInput = document.getElementById('artistDraftImage');
-
-if (!name || !price || stock === '') {
-alert("Please complete the product name, price, and stock before saving.");
-return;
-}
-
-let key = editingKey;
-let isNew = false;
-
-if (!key) {
-artistProductKey += 1;
-key = artistProductKey;
-isNew = true;
-}
-
-const summaryCategory = newCategory ? newCategory : (categoryName || 'No category');
-const htmlContent = `
-<div class="artist-product-list-card">
-<div class="artist-product-thumb" id="thumb-${key}"><i class="fas fa-image"></i></div>
-<div class="artist-product-summary">
-<div class="artist-product-summary-head">
-<h4 class="artist-product-name">${name}</h4>
-<div class="artist-product-price">₱${Number(price).toFixed(2)}</div>
-</div>
-<div class="artist-product-desc">${description}</div>
-<div class="artist-product-meta-grid">
-<span class="artist-product-pill"><i class="fas fa-tag"></i>${summaryCategory}</span>
-<span class="artist-product-pill"><i class="fas fa-box"></i>${stock} stock</span>
-</div>
-</div>
-<div class="artist-product-tools">
-<button type="button" class="artist-remove-product-btn" onclick="event.stopPropagation(); this.closest('.artist-product-entry').remove(); updateArtistProductsEmptyState();">
-<i class="fas fa-trash-alt me-2"></i>Remove
-</button>
-</div>
-</div>
-<div style="display:none">
-<input type="hidden" name="product_key" value="${key}">
-<input type="hidden" name="prod_name_${key}" value="${name}">
-<input type="hidden" name="prod_price_${key}" value="${price}">
-<input type="hidden" name="prod_stock_qty_${key}" value="${stock}">
-<input type="hidden" name="category_id_${key}" value="${categoryId}">
-<input type="hidden" name="new_category_${key}" value="${newCategory}">
-<textarea name="prod_description_${key}">${description}</textarea>
-</div>
-    `;
-
-    let entry;
-    if (isNew) {
-        entry = document.createElement('div');
-        entry.className = 'artist-product-entry mb-3';
-        entry.setAttribute('data-product-key', key);
-        entry.onclick = function() { editArtistDraftProduct(key); };
-        document.getElementById('artistProductsStack').appendChild(entry);
-        document.getElementById('artistProductsEmpty').classList.add('hidden');
-    } else {
-        entry = document.querySelector(`.artist-product-entry[data-product-key="${key}"]`);
-    }
-
-    // Maintain existing image data if no new image is selected
-    const existingImgData = entry.querySelector(`input[name="prod_image_data_${key}"]`) ? entry.querySelector(`input[name="prod_image_data_${key}"]`).value : '';
-    entry.innerHTML = htmlContent;
-
-    if (imageInput.files && imageInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const hiddenImg = document.createElement('input');
-            hiddenImg.type = 'hidden';
-            hiddenImg.name = `prod_image_data_${key}`;
-            hiddenImg.value = e.target.result;
-            entry.querySelector('div[style="display:none"]').appendChild(hiddenImg);
-            document.getElementById(`thumb-${key}`).innerHTML = `<img src="${e.target.result}" style="width:100%; height:100%; object-fit:cover;">`;
-        }
-        reader.readAsDataURL(imageInput.files[0]);
-    } else if (existingImgData) {
-        const hiddenImg = document.createElement('input');
-        hiddenImg.type = 'hidden';
-        hiddenImg.name = `prod_image_data_${key}`;
-        hiddenImg.value = existingImgData;
-        entry.querySelector('div[style="display:none"]').appendChild(hiddenImg);
-        document.getElementById(`thumb-${key}`).innerHTML = `<img src="${existingImgData}" style="width:100%; height:100%; object-fit:cover;">`;
-    }
-
-    // Close modal
-    const modalEl = document.getElementById('artistProductModal');
-    const modalInstance = bootstrap.Modal.getInstance(modalEl);
-    if (modalInstance) modalInstance.hide();
-}
-
-function updateArtistProductsEmptyState() {
-    const stack = document.getElementById('artistProductsStack');
-    const empty = document.getElementById('artistProductsEmpty');
-    if (stack.children.length === 0) {
-        empty.classList.remove('hidden');
-    }
-}</script>
+</script>
 {% endblock %}

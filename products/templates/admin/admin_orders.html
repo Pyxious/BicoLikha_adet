@@ -15,6 +15,8 @@
         letter-spacing: 0.5px;
     }
     .table tbody td { padding: 18px 20px; vertical-align: middle; border-bottom: 1px solid #f8f8f8; font-size: 0.85rem; }
+    .order-row { cursor: pointer; }
+    .order-row:hover td { background: #fffaf7; }
     
     /* Text Hierarchy */
     .main-text { font-weight: 700; color: #5d3a2d; display: block; margin-bottom: 1px; }
@@ -33,6 +35,7 @@
     }
     .st-pending { background: #e5f3f3; color: #5a9696; border-color: #c9e3e3; }
     .st-processing { background: #fff9e6; color: #b38f00; border-color: #fcebb6; }
+    .st-prepared { background: #e8f2ff; color: #2e6da4; border-color: #c8dcf2; }
     .st-shipped { background: #f3e5ff; color: #9c27b0; border-color: #ebccff; }
     .st-delivered { background: #eff7e9; color: #6a9d4a; border-color: #d4e8c4; }
     .st-cancelled { background: #fdf0f0; color: #d35e5e; border-color: #f9d7d7; }
@@ -42,52 +45,51 @@
     .pay-pending { color: #2e86de; font-weight: 700; font-size: 0.8rem; }
     .pay-unpaid { color: #eb4d4b; font-weight: 700; font-size: 0.8rem; }
 
-    /* Action Dropdown Button */
-    .btn-action { 
-        border: 1.5px solid #ddd; 
-        background: white; 
-        border-radius: 8px; 
-        padding: 6px 12px; 
-        color: #666; 
-        transition: 0.2s;
-        font-size: 0.8rem;
-    }
-    .btn-action:hover { background: #f8f9fa; border-color: #8d5e4a; color: #8d5e4a; }
-
-    .form-check-input { width: 17px; height: 17px; border: 1.5px solid #ccc; cursor: pointer; }
-
     /* Search/Header adjustments */
     .modal-section-title { font-weight: 800; color: #8d5e4a; font-size: 0.7rem; letter-spacing: 1px; margin-bottom: 15px; display: block; }
     .btn-update-order { background: #8d5e4a; color: white; font-weight: 800; transition: 0.3s; }
+    .orders-toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+    .orders-sort { max-width: 230px; border-radius: 10px; border: 1.5px solid #ddd; font-size: 0.82rem; }
 </style>
 
 <div class="mb-4 d-flex justify-content-between align-items-center">
-    
+    <div>
+        <h5 class="fw-bold mb-1" style="color:#5d3a2d;">Orders</h5>
+        <div class="text-muted small">Click any order row to view and update details.</div>
+    </div>
+    <form method="GET" class="orders-toolbar">
+        <label for="orderSort" class="small fw-bold text-muted mb-0">Sort by</label>
+        <select id="orderSort" name="sort" class="form-select orders-sort" onchange="this.form.submit()">
+            <option value="date_desc" {% if current_sort == 'date_desc' %}selected{% endif %}>Date, newest first</option>
+            <option value="date_asc" {% if current_sort == 'date_asc' %}selected{% endif %}>Date, oldest first</option>
+            <option value="artist_asc" {% if current_sort == 'artist_asc' %}selected{% endif %}>Artist, A-Z</option>
+            <option value="artist_desc" {% if current_sort == 'artist_desc' %}selected{% endif %}>Artist, Z-A</option>
+            <option value="price_desc" {% if current_sort == 'price_desc' %}selected{% endif %}>Price, high to low</option>
+            <option value="price_asc" {% if current_sort == 'price_asc' %}selected{% endif %}>Price, low to high</option>
+        </select>
+    </form>
 </div>
 
 <div class="orders-card shadow-sm mb-5">
     <table class="table table-hover mb-0">
         <thead>
             <tr>
-                <th style="width: 40px;"><input type="checkbox" class="form-check-input"></th>
                 <th>Order #</th>
                 <th>Customer</th>
                 <th>Item</th>
+                <th>Artist</th>
                 <th>Total</th>
                 <th>Status</th>
                 <th>Payment</th>
                 <th>Date</th>
-                <th class="text-end">Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for order in orders %}
-            <tr>
-                <td><input type="checkbox" class="form-check-input"></td>
-                
+            <tr class="order-row" data-bs-toggle="modal" data-bs-target="#orderModal{{ order.order_id }}" tabindex="0" aria-label="Open order #BK-{{ order.order_id }}">
                 <!-- ORDER # & ID -->
                 <td>
-                    <span class="main-text" style="color: #8d5e4a;">ORD-{{ order.payment.timestamp|date:"Ymd" }}{{ order.order_id }}</span>
+                    <span class="main-text" style="color: #8d5e4a;">ORD-{{ order.created_at|date:"Ymd" }}{{ order.order_id }}</span>
                     <span class="sub-text">ID: {{ order.order_id }}</span>
                 </td>
 
@@ -99,12 +101,23 @@
 
                 <!-- ITEM SUMMARY -->
                 <td>
-                    <span class="main-text">{{ order.items.count }} Items</span>
+                    <span class="main-text">{{ order.item_count }} Items</span>
                     <span class="sub-text text-truncate" style="max-width: 150px;">
                         {% with first=order.items.first %}
                             {{ first.product.title }}
-                            {% if order.items.count > 1 %}+ {{ order.items.count|add:"-1" }} more{% endif %}
+                            {% if order.item_count > 1 %}+ {{ order.item_count|add:"-1" }} more{% endif %}
                         {% endwith %}
+                    </span>
+                </td>
+
+                <!-- ARTIST SUMMARY -->
+                <td>
+                    <span class="main-text text-truncate" style="max-width: 160px;">
+                        {% for artist_name in order.artist_names %}
+                            {{ artist_name }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            Unassigned
+                        {% endfor %}
                     </span>
                 </td>
 
@@ -117,6 +130,7 @@
                         {% if order.status == 'Delivered' %}st-delivered
                         {% elif order.status == 'Cancelled' %}st-cancelled
                         {% elif order.status == 'Shipped' %}st-shipped
+                        {% elif order.status == 'Prepared' %}st-prepared
                         {% elif order.status == 'Processing' %}st-processing
                         {% else %}st-pending{% endif %}">
                         {{ order.status }}
@@ -131,15 +145,7 @@
                 </td>
 
                 <!-- DATE -->
-                <td class="text-muted" style="font-size: 0.8rem;">{{ order.payment.timestamp|date:"Y-m-d" }}</td>
-
-                <!-- ACTIONS -->
-                <td class="text-end">
-                    <button class="btn-action shadow-sm" data-bs-toggle="modal" data-bs-target="#orderModal{{ order.order_id }}">
-                        <i class="fas fa-ellipsis-h me-1"></i>
-                        <i class="fas fa-chevron-down" style="font-size: 0.5rem;"></i>
-                    </button>
-                </td>
+                <td class="text-muted" style="font-size: 0.8rem;">{{ order.created_at|date:"Y-m-d h:i A" }}</td>
             </tr>
 
             <!-- MODAL (INTEGRATED WITH YOUR PREVIOUS DESIGN) -->
@@ -159,20 +165,27 @@
                                 <div class="row">
                                     <div class="col-md-5 border-end pe-4">
                                         <h6 class="modal-section-title">CUSTOMER INFORMATION</h6>
-                                        <p class="mb-1 small"><strong>User ID:</strong> {{ order.user.id }}</p>
+                                        <p class="mb-1 small"><strong>Name:</strong> {{ order.user.get_full_name|default:order.user.username }}</p>
+                                        <p class="mb-1 small"><strong>Email:</strong> {{ order.user.email }}</p>
+                                        <p class="mb-3 small"><strong>User ID:</strong> {{ order.user.id }}</p>
                                         <div class="d-flex align-items-start mb-2">
                                             <i class="fas fa-map-marker-alt mt-1 me-2 text-secondary"></i>
                                             <span class="small">
+                                                {% if order.customer_address %}
                                                 {{ order.customer_address.street }}, {{ order.customer_address.brgy }}<br>
                                                 {{ order.customer_address.municipality }} {{ order.customer_address.zipcode }}
+                                                {% else %}
+                                                No delivery address found
+                                                {% endif %}
                                             </span>
                                         </div>
-                                        <p class="mb-4 small"><strong>Contact:</strong> {{ order.customer_address.phone_num }}</p>
+                                        <p class="mb-4 small"><strong>Contact:</strong> {% if order.customer_address and order.customer_address.phone_num %}{{ order.customer_address.phone_num }}{% else %}{{ order.user.phone_number|default:"No phone number" }}{% endif %}</p>
                                         
                                         <h6 class="modal-section-title">CHANGE ORDER STATUS</h6>
                                         <select name="status" class="form-select mb-3 shadow-sm" style="border-radius: 10px;">
                                             <option value="To Pay" {% if order.status == "To Pay" %}selected{% endif %}>To Pay</option>
                                             <option value="Processing" {% if order.status == "Processing" %}selected{% endif %}>Processing (To Ship)</option>
+                                            <option value="Prepared" {% if order.status == "Prepared" %}selected{% endif %}>Prepared</option>
                                             <option value="Shipped" {% if order.status == "Shipped" %}selected{% endif %}>Shipped (To Receive)</option>
                                             <option value="Delivered" {% if order.status == "Delivered" %}selected{% endif %}>Delivered (Completed)</option>
                                             <option value="Cancelled" {% if order.status == "Cancelled" %}selected{% endif %}>Cancelled</option>

@@ -145,6 +145,10 @@ AUTH_USER_MODEL = 'accounts.User'
 DATA_UPLOAD_MAX_MEMORY_SIZE = None
 FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024
 
+# Mock email delivery for admin-to-artist notifications.
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'Bicolikha Admin <no-reply@bicolikha.local>'
+
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend', # Default

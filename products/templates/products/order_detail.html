@@ -206,7 +206,7 @@
         background: #f5efe9;
         color: #8d5e4a;
     }
-    .artist-group-status.waiting-for-courier {
+    .artist-group-status.prepared {
         background: #eef5ff;
         color: #1f78d1;
     }
@@ -485,8 +485,8 @@
                             {{ group.status }}
                             {% if group.status == 'Processing' %}
                                 <i class="fas fa-brush"></i>
-                            {% elif group.status == 'Waiting for Courier' %}
-                                <i class="fas fa-clock"></i>
+                            {% elif group.status == 'Prepared' %}
+                                <i class="fas fa-box"></i>
                             {% elif group.status == 'Shipped' %}
                                 <i class="fas fa-truck"></i>
                             {% elif group.status == 'Delivered' %}

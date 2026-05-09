@@ -19,7 +19,7 @@ class CustomerAuthenticationForm(AuthenticationForm):
     def confirm_login_allowed(self, user):
         if user.is_staff:
             raise forms.ValidationError(
-                "Portal Mismatch: Admin accounts must use the Management Portal.",
+                self.error_messages['invalid_login'],
                 code='invalid_login',
             )
         super().confirm_login_allowed(user)

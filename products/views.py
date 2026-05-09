@@ -6,12 +6,13 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.db import transaction
-from django.db.models import Q, Sum, Count, F, Case, When, Value, IntegerField
+from django.db.models import Q, Sum, Count, F, Case, When, Value, IntegerField, Min
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.utils.text import slugify
@@ -106,6 +107,52 @@ def _log_audit(request, action):
     )
 
 
+def _send_mock_artist_email(artist, subject, body):
+    artist_email = artist.artist_email if artist and artist.artist_email else ''
+    if not artist_email:
+        return False
+
+    send_mail(
+        subject,
+        body,
+        getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@bicolikha.local'),
+        [artist_email],
+        fail_silently=True,
+    )
+    return True
+
+
+def _get_application_applicant_name(application):
+    if application.applicant_name:
+        return application.applicant_name
+    if application.user:
+        return application.user.get_full_name() or application.user.username
+    return 'Guest applicant'
+
+
+def _get_application_applicant_email(application):
+    if application.applicant_email:
+        return application.applicant_email
+    if application.user:
+        return application.user.email
+    return ''
+
+
+def _send_application_email(application, subject, body):
+    applicant_email = _get_application_applicant_email(application)
+    if not applicant_email:
+        return False
+
+    send_mail(
+        subject,
+        body,
+        getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@bicolikha.local'),
+        [applicant_email],
+        fail_silently=True,
+    )
+    return True
+
+
 def _get_application_category(selected_category_id, requested_category_name):
     requested_category_name = (requested_category_name or '').strip()
 
@@ -122,19 +169,20 @@ def _get_application_category(selected_category_id, requested_category_name):
     return get_object_or_404(Category, category_id=selected_category_id), ''
 
 
-def _save_artist_application_image(user, uploaded_file, product_name):
+def _save_artist_application_image(owner_key, uploaded_file, product_name):
     if not uploaded_file:
         return ''
 
     safe_name = slugify(product_name or uploaded_file.name.rsplit('.', 1)[0]) or 'artwork'
+    owner_slug = slugify(str(owner_key or 'guest')) or 'guest'
     path = default_storage.save(
-        f'artist_application_submissions/{user.pk}/{timezone.now().strftime("%Y%m%d%H%M%S%f")}_{safe_name}_{uploaded_file.name}',
+        f'artist_application_submissions/{owner_slug}/{timezone.now().strftime("%Y%m%d%H%M%S%f")}_{safe_name}_{uploaded_file.name}',
         uploaded_file
     )
     return path
 
 
-def _save_artist_application_image_data(user, image_data, filename, product_name):
+def _save_artist_application_image_data(owner_key, image_data, filename, product_name):
     image_data = (image_data or '').strip()
     if not image_data:
         return ''
@@ -152,6 +200,7 @@ def _save_artist_application_image_data(user, image_data, filename, product_name
     original_name = filename or f'{slugify(product_name) or "artwork"}.{extension}'
     safe_name = slugify(product_name or original_name.rsplit('.', 1)[0]) or 'artwork'
     stored_name = f'{timezone.now().strftime("%Y%m%d%H%M%S%f")}_{safe_name}_{original_name}'
+    owner_slug = slugify(str(owner_key or 'guest')) or 'guest'
 
     try:
         decoded = base64.b64decode(encoded)
@@ -159,19 +208,20 @@ def _save_artist_application_image_data(user, image_data, filename, product_name
         return ''
 
     path = default_storage.save(
-        f'artist_application_submissions/{user.pk}/{stored_name}',
+        f'artist_application_submissions/{owner_slug}/{stored_name}',
         ContentFile(decoded, name=stored_name)
     )
     return path
 
 
-def _save_artist_profile_image(user, uploaded_file, artist_name):
+def _save_artist_profile_image(owner_key, uploaded_file, artist_name):
     if not uploaded_file:
         return ''
 
     safe_name = slugify(artist_name or uploaded_file.name.rsplit('.', 1)[0]) or 'artist'
+    owner_slug = slugify(str(owner_key or 'guest')) or 'guest'
     path = default_storage.save(
-        f'artist_profiles/{user.pk}/{timezone.now().strftime("%Y%m%d%H%M%S%f")}_{safe_name}_{uploaded_file.name}',
+        f'artist_profiles/{owner_slug}/{timezone.now().strftime("%Y%m%d%H%M%S%f")}_{safe_name}_{uploaded_file.name}',
         uploaded_file
     )
     return path
@@ -193,18 +243,54 @@ def _parse_application_product_details(application_product):
 
 def _create_artist_application_from_post(request, artist_name):
     product_keys = [key for key in request.POST.getlist('product_key') if key.strip()]
+    applicant_user = request.user if request.user.is_authenticated else None
+    applicant_name = (request.POST.get('applicant_name') or '').strip()
+    applicant_email = (request.POST.get('applicant_email') or '').strip().lower()
+    applicant_phone = re.sub(r'\D', '', request.POST.get('applicant_phone') or '')
+    artist_description = (request.POST.get('artist_description') or '').strip()
+    artist_municipality = (request.POST.get('artist_municipality') or '').strip()
+    artist_brgy = (request.POST.get('artist_brgy') or '').strip()
+    artist_zipcode = (request.POST.get('artist_zipcode') or '').strip()
+    storage_owner = applicant_user.pk if applicant_user else applicant_email
 
     if not artist_name:
         raise ValueError("Please enter the artist name you want reviewed.")
+    if not artist_description:
+        raise ValueError("Please enter an artist description.")
+    if not artist_municipality:
+        raise ValueError("Please enter the artist municipality.")
+    if not artist_brgy:
+        raise ValueError("Please enter the artist barangay.")
+    if not artist_zipcode:
+        raise ValueError("Please enter the artist ZIP code.")
+
+    if not applicant_user:
+        if not applicant_name:
+            raise ValueError("Please enter your full name.")
+        if not applicant_email:
+            raise ValueError("Please enter your email address.")
+        if not applicant_phone:
+            raise ValueError("Please enter your phone number.")
+    else:
+        applicant_name = applicant_name or applicant_user.get_full_name() or applicant_user.username
+        applicant_email = applicant_email or applicant_user.email
+        applicant_phone = applicant_phone or getattr(applicant_user, 'phone_number', '') or ''
 
     if not product_keys:
         raise ValueError("Please add at least one product to your application.")
 
     application = ArtistApplication.objects.create(
-        user=request.user,
+        user=applicant_user,
+        applicant_name=applicant_name,
+        applicant_email=applicant_email,
+        applicant_phone=applicant_phone,
         artist_name=artist_name,
+        artist_description=artist_description,
+        artist_municipality=artist_municipality,
+        artist_brgy=artist_brgy,
+        artist_zipcode=artist_zipcode,
         artist_image=_save_artist_profile_image(
-            request.user,
+            applicant_user.pk if applicant_user else applicant_email,
             request.FILES.get('artist_image'),
             artist_name
         ),
@@ -256,11 +342,11 @@ def _create_artist_application_from_post(request, artist_name):
             product_stock_qty=stock_value,
             product_image=(
                 _save_artist_application_image(
-                    request.user,
+                    storage_owner,
                     request.FILES.get(f'prod_image_{key}'),
                     product_name
                 ) or _save_artist_application_image_data(
-                    request.user,
+                    storage_owner,
                     product_image_data,
                     product_image_filename,
                     product_name
@@ -280,33 +366,20 @@ def _approve_artist_application(application):
         return
 
     with transaction.atomic():
-        applicant_address = Address.objects.filter(user=application.user, is_default=True).first() or Address.objects.filter(user=application.user).first()
-        artist, created = Artist.objects.get_or_create(
-            user=application.user,
-            defaults={
-                'artist_name': application.artist_name,
-                'artist_phone_num': (applicant_address.phone_num if applicant_address else '') or '',
-                'artist_municipality': (applicant_address.municipality if applicant_address else '') or '',
-                'artist_brgy': (applicant_address.brgy if applicant_address else '') or '',
-                'artist_zipcode': (applicant_address.zipcode if applicant_address else '') or '',
-                'artist_description': 'Verified Artist',
-            }
-        )
+        applicant_address = None
+        if application.user:
+            applicant_address = Address.objects.filter(user=application.user, is_default=True).first() or Address.objects.filter(user=application.user).first()
 
-        if not created:
-            artist.artist_name = application.artist_name
-            if application.artist_image:
-                artist.artist_image = application.artist_image
-            if applicant_address:
-                artist.artist_phone_num = applicant_address.phone_num
-                artist.artist_municipality = applicant_address.municipality
-                artist.artist_brgy = applicant_address.brgy
-                artist.artist_zipcode = applicant_address.zipcode
-            artist.artist_description = artist.artist_description or 'Verified Artist'
-            artist.save()
-        elif application.artist_image:
-            artist.artist_image = application.artist_image
-            artist.save(update_fields=['artist_image'])
+        artist = Artist.objects.create(
+            artist_name=application.artist_name,
+            artist_email=_get_application_applicant_email(application),
+            artist_phone_num=(application.applicant_phone or (applicant_address.phone_num if applicant_address else '') or ''),
+            artist_municipality=application.artist_municipality or (applicant_address.municipality if applicant_address else '') or '',
+            artist_brgy=application.artist_brgy or (applicant_address.brgy if applicant_address else '') or '',
+            artist_zipcode=application.artist_zipcode or (applicant_address.zipcode if applicant_address else '') or '',
+            artist_description=application.artist_description or 'Verified Artist',
+            artist_image=application.artist_image or None,
+        )
 
         for application_product in application.products.select_related('category').all():
             _parse_application_product_details(application_product)
@@ -415,6 +488,13 @@ class UserLoginView(LoginView):
     """PORTAL 1: CUSTOMER LOGIN - Strictly rejects staff via CustomerAuthenticationForm."""
     template_name = 'registration/login.html'
     authentication_form = CustomerAuthenticationForm
+
+    def form_valid(self, form):
+        if form.get_user().is_staff:
+            form.add_error(None, "We couldn't sign you in with that email or phone number and password.")
+            return self.form_invalid(form)
+        return super().form_valid(form)
+
     def get_success_url(self):
         return reverse_lazy('catalog')
 
@@ -465,6 +545,54 @@ def signup(request):
         form = BicolikhaSignupForm()
     return render(request, 'registration/signup.html', {'form': form})
 
+
+def artist_application(request):
+    if request.user.is_authenticated and request.user.is_staff:
+        return redirect('admin_dashboard')
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                artist_name = (request.POST.get('artist_name') or '').strip()
+                application = _create_artist_application_from_post(request, artist_name)
+
+            _send_application_email(
+                application,
+                "Bicolikha Artist Application Received",
+                f"Your artist application for {application.artist_name} has been received and is pending admin review."
+            )
+            messages.success(request, "Your artist application has been submitted and is waiting for admin review.")
+            return redirect('artist_application')
+        except ValueError as exc:
+            messages.error(request, str(exc))
+
+    initial_name = ''
+    initial_email = ''
+    initial_phone = ''
+    initial_municipality = ''
+    initial_brgy = ''
+    initial_zipcode = ''
+    if request.user.is_authenticated:
+        initial_name = request.user.get_full_name() or request.user.username
+        initial_email = request.user.email
+        initial_phone = getattr(request.user, 'phone_number', '') or ''
+        primary_address = _get_primary_address(request.user)
+        if primary_address:
+            initial_phone = initial_phone or primary_address.phone_num or ''
+            initial_municipality = primary_address.municipality or ''
+            initial_brgy = primary_address.brgy or ''
+            initial_zipcode = primary_address.zipcode or ''
+
+    return render(request, 'products/artist_application.html', {
+        'application_categories': Category.objects.order_by('category_name'),
+        'initial_name': initial_name,
+        'initial_email': initial_email,
+        'initial_phone': initial_phone,
+        'initial_municipality': initial_municipality,
+        'initial_brgy': initial_brgy,
+        'initial_zipcode': initial_zipcode,
+    })
+
 # --- 2. ADMINISTRATIVE / MANAGEMENT HUB ---
 
 from django.utils import timezone
@@ -491,6 +619,11 @@ def admin_users(request):
 
             # Use your helper function to process approval
             _approve_artist_application(application)
+            _send_application_email(
+                application,
+                "Bicolikha Artist Application Approved",
+                f"Your artist application for {application.artist_name} has been approved."
+            )
             _log_audit(request, f"Approved artist application for {application.artist_name}")
             messages.success(request, f"Approved artist application for {application.artist_name}.")
             return redirect('admin_users')
@@ -504,6 +637,11 @@ def admin_users(request):
             application.application_status = 'Rejected'
             application.date_reviewed = timezone.now()
             application.save(update_fields=['application_status', 'date_reviewed'])
+            _send_application_email(
+                application,
+                "Bicolikha Artist Application Rejected",
+                f"Your artist application for {application.artist_name} was not approved."
+            )
             _log_audit(request, f"Rejected artist application for {application.artist_name}")
             messages.success(request, f"Rejected artist application for {application.artist_name}.")
             return redirect('admin_users')
@@ -644,10 +782,10 @@ def admin_manage_accounts(request):
             # 1. Get the specific user being promoted
             target_user = get_object_or_404(User, id=request.POST.get('user_id'))
             
-            # 2. Create the Artist record AND LINK THE USER
+            # 2. Create the Artist record without changing the user's customer account.
             Artist.objects.create(
-                user=target_user, # THIS IS THE CRITICAL LINK
                 artist_name=request.POST.get('artist_name'),
+                artist_email=target_user.email,
                 artist_phone_num=request.POST.get('contact'),
                 artist_municipality=request.POST.get('municipality'),
                 artist_brgy=request.POST.get('brgy'),
@@ -724,6 +862,11 @@ def admin_products(request):
                     return redirect('admin_products')
 
                 _approve_artist_application(application)
+                _send_application_email(
+                    application,
+                    "Bicolikha Product Submission Approved",
+                    f"Your submission for {application.artist_name} has been approved."
+                )
                 _log_audit(request, f"Approved product submission for {application.artist_name}")
                 messages.success(request, f"Approved product submission for {application.artist_name}.")
                 return redirect('admin_products')
@@ -735,6 +878,11 @@ def admin_products(request):
             application.application_status = 'Rejected'
             application.date_reviewed = timezone.now()
             application.save(update_fields=['application_status', 'date_reviewed'])
+            _send_application_email(
+                application,
+                "Bicolikha Product Submission Rejected",
+                f"Your submission for {application.artist_name} was not approved."
+            )
             _log_audit(request, f"Rejected product submission for {application.artist_name}")
             messages.success(request, f"Rejected product submission for {application.artist_name}.")
             return redirect('admin_products')
@@ -847,7 +995,6 @@ def admin_products(request):
     ).values('category_name', 'count'))
 
     product_submissions_query = ArtistApplication.objects.filter(
-        user__artist_profile__isnull=False,
         application_status=product_submission_status
     ).select_related('user').prefetch_related('products', 'products__category').order_by('-date_submitted')
     product_submissions_paginator = Paginator(product_submissions_query, 6)
@@ -856,7 +1003,6 @@ def admin_products(request):
     _decorate_artist_applications(product_submissions)
     product_submission_counts = {
         status: ArtistApplication.objects.filter(
-            user__artist_profile__isnull=False,
             application_status=status
         ).count()
         for status in ['Pending', 'Approved', 'Rejected']
@@ -908,26 +1054,63 @@ def admin_products(request):
 
 @user_passes_test(lambda u: u.is_staff, login_url='admin_login')
 def admin_orders(request):
-    orders = Order.objects.all().order_by('-order_id').select_related('user', 'shipment')
+    sort_by = request.GET.get('sort', 'date_desc')
+    sort_map = {
+        'date_desc': ['-created_at', '-order_id'],
+        'date_asc': ['created_at', 'order_id'],
+        'artist_asc': ['artist_sort', '-created_at'],
+        'artist_desc': ['-artist_sort', '-created_at'],
+        'price_desc': ['-total_amount', '-created_at'],
+        'price_asc': ['total_amount', '-created_at'],
+    }
+    if sort_by not in sort_map:
+        sort_by = 'date_desc'
+
+    orders = (
+        Order.objects
+        .select_related('user', 'payment', 'shipment', 'shipment__address')
+        .annotate(artist_sort=Min('orderdetail__product__artist__artist_name'))
+        .order_by(*sort_map[sort_by])
+    )
     
     if request.method == 'POST' and 'update_status' in request.POST:
         order = get_object_or_404(Order, order_id=request.POST.get('order_id'))
         new_status = request.POST.get('status')
         order.status = new_status
 
-        Notification.objects.create(
-            order=order,
-            artist=order.items.first().product.artist, # Link to the first artist in the order
-            message_text=f"Order Update: Your order status has been changed to {new_status}.",
-            sender_role='System'
-        )
+        order_items = OrderDetail.objects.filter(order=order).select_related('product', 'product__artist')
+        artists = []
+        seen_artist_ids = set()
+        for item in order_items:
+            artist = item.product.artist
+            if artist and artist.artist_id not in seen_artist_ids:
+                seen_artist_ids.add(artist.artist_id)
+                artists.append(artist)
+
+        for artist in artists:
+            message_text = f"Admin updated Order #BK-{order.order_id} to {new_status}."
+            Notification.objects.create(
+                order=order,
+                artist=artist,
+                message_text=message_text,
+                sender_role='System',
+                status_update=new_status,
+                is_read=False
+            )
+            _send_mock_artist_email(
+                artist,
+                f"Bicolikha Order #BK-{order.order_id}: {new_status}",
+                message_text
+            )
 
         # --- SYNC TO SHIPMENT TABLE ---
         if order.shipment:
-            if new_status == 'Shipped':
+            if new_status == 'Prepared':
+                order.shipment.shipment_status = 'Prepared'
+            elif new_status == 'Shipped':
                 order.shipment.shipment_status = 'In Transit'
                 order.shipment.shipment_date = timezone.now().date() # Sets the date
-            if new_status == 'Delivered':
+            elif new_status == 'Delivered':
                 # Update Shipment
                 if order.shipment:
                     order.shipment.shipment_status = 'Arrived'
@@ -947,10 +1130,26 @@ def admin_orders(request):
     
     # Pre-fetch logic for display...
     for o in orders:
-        o.items = OrderDetail.objects.filter(order=o).select_related('product')
-        o.customer_address = Address.objects.filter(user=o.user, address_type='Default').first()
+        o.items = OrderDetail.objects.filter(order=o).select_related('product', 'product__artist')
+        o.customer_address = (
+            o.shipment.address if o.shipment and o.shipment.address else
+            Address.objects.filter(user=o.user, is_default=True).first() or
+            Address.objects.filter(user=o.user).order_by('-address_id').first()
+        )
+        artist_names = []
+        seen_artist_ids = set()
+        for item in o.items:
+            artist = item.product.artist
+            if artist and artist.artist_id not in seen_artist_ids:
+                seen_artist_ids.add(artist.artist_id)
+                artist_names.append(artist.artist_name)
+        o.artist_names = artist_names
+        o.item_count = o.items.count()
 
-    return render(request, 'admin/admin_orders.html', {'orders': orders})
+    return render(request, 'admin/admin_orders.html', {
+        'orders': orders,
+        'current_sort': sort_by,
+    })
 
 @user_passes_test(lambda u: u.is_staff, login_url='admin_login')
 def admin_reports(request):
@@ -975,6 +1174,7 @@ def admin_manage_artists(request):
             _log_audit(request, f"Revoked artist privileges for {artist_label}")
         elif 'edit_artist' in request.POST:
             artist.artist_name = (request.POST.get('artist_name') or '').strip()
+            artist.artist_email = (request.POST.get('artist_email') or '').strip().lower()
             artist.artist_phone_num = (request.POST.get('artist_phone_num') or '').strip()
             artist.artist_description = (request.POST.get('artist_description') or '').strip()
             artist.artist_municipality = (request.POST.get('artist_municipality') or '').strip()
@@ -983,7 +1183,7 @@ def admin_manage_artists(request):
 
             if request.FILES.get('artist_image'):
                 artist.artist_image = _save_artist_profile_image(
-                    artist.user or request.user,
+                    artist.artist_email or artist.artist_id,
                     request.FILES.get('artist_image'),
                     artist.artist_name
                 )
@@ -993,7 +1193,7 @@ def admin_manage_artists(request):
             messages.success(request, f"Updated artist profile for {artist.artist_name}.")
         return redirect('manage_artists')
     return render(request, 'admin/manage_artists.html', {
-        'artists': Artist.objects.select_related('user').order_by('artist_name')
+        'artists': Artist.objects.order_by('artist_name')
     })
 
 @user_passes_test(lambda u: u.is_staff, login_url='admin_login')
@@ -1022,11 +1222,18 @@ def admin_messages(request):
         artist_id = request.POST.get('artist_id')
         if msg_text and artist_id:
             target_artist = get_object_or_404(Artist, artist_id=artist_id)
-            Notification.objects.create(
-                artist=target_artist,
-                message_text=msg_text,
-                sender_role='Admin',
-                order_id=1 # Dummy or link to a generic context
+            related_order = Order.objects.filter(orderdetail__product__artist=target_artist).distinct().order_by('-order_id').first()
+            if related_order:
+                Notification.objects.create(
+                    artist=target_artist,
+                    order=related_order,
+                    message_text=msg_text,
+                    sender_role='Admin',
+                )
+            _send_mock_artist_email(
+                target_artist,
+                "Bicolikha Admin Message",
+                msg_text
             )
             _log_audit(request, f"Sent management message to {target_artist.artist_name}")
             return redirect(f'/management/messages/?artist_id={artist_id}')
@@ -1210,7 +1417,7 @@ def _get_artist_status_map(order):
     status_map = {}
     artist_updates = Notification.objects.filter(
         order=order,
-        sender_role='Artist'
+        sender_role='System'
     ).select_related('artist').order_by('artist_id', '-timestamp')
 
     for notif in artist_updates:
@@ -1246,10 +1453,10 @@ def _build_order_artist_groups(order, reviewed_products):
             display_status = 'Delivered'
         elif order.status == 'Cancelled':
             display_status = 'Cancelled'
-        elif current_artist_status == 'Shipped!':
+        elif order.status == 'Shipped':
             display_status = 'Shipped'
-        elif current_artist_status == 'Waiting for Courier':
-            display_status = 'Waiting for Courier'
+        elif order.status == 'Prepared':
+            display_status = 'Prepared'
         else:
             display_status = 'Processing'
 
@@ -1277,10 +1484,7 @@ def _build_order_artist_groups(order, reviewed_products):
 
 def _decorate_order(order, reviewed_products):
     order.items = list(OrderDetail.objects.filter(order=order).select_related('product', 'product__artist'))
-    order.is_cancellable = not Notification.objects.filter(
-        order=order,
-        status_update__in=['Items Prepared', 'Ready for Pickup', 'Item Picked Up', 'Waiting for Courier', 'Shipped!']
-    ).exists()
+    order.is_cancellable = order.status in ['Processing', 'To Pay', 'Pending']
     order.order_date = getattr(order, 'created_at', None)
     order.item_count = sum(item.quantity or 0 for item in order.items)
     order.preview_items = order.items[:4]
@@ -1314,15 +1518,12 @@ def profile_view(request):
     # Full list for the Address section
     all_addresses = [addr for addr in _get_user_addresses(request.user) if _address_is_complete(addr)]
     
-    # Check if user is a promoted Artist
-    artist_obj = Artist.objects.filter(user=request.user).first()
-    is_artist = artist_obj is not None
-    latest_artist_application = _get_artist_application_status(request.user)
-    application_categories = Category.objects.order_by('category_name')
-    artist_products_query = Artwork.objects.filter(artist=artist_obj).order_by('title') if is_artist else Artwork.objects.none()
-    artist_products_paginator = Paginator(artist_products_query, 8)
-    artist_products_page = artist_products_paginator.get_page(request.GET.get('artist_products_page'))
-    artist_products = artist_products_page.object_list
+    # Customer accounts no longer expose artist/seller functions. Artist records
+    # remain as public product metadata and are managed from the admin portal.
+    artist_obj = None
+    is_artist = False
+    if active_tab in ['artist_application', 'artist_products', 'messages']:
+        return redirect('/profile/?tab=account')
 
     # Identify products already reviewed by this user
     reviewed_products = list(Review.objects.filter(user=request.user).values_list('product_id', flat=True))
@@ -1384,136 +1585,20 @@ def profile_view(request):
                 messages.error(request, str(exc))
             return redirect('/profile/?tab=account')
 
-        # --- APPLY AS ARTIST ---
-        elif 'submit_artist_application' in request.POST:
-            if is_artist:
-                messages.error(request, "Your account is already approved as an artist.")
-                return redirect('/profile/?tab=account')
-
-            if latest_artist_application and latest_artist_application.application_status == 'Pending':
-                messages.error(request, "You already have a pending artist application under review.")
-                return redirect('/profile/?tab=artist_application')
-
-            try:
-                with transaction.atomic():
-                    artist_name = (request.POST.get('artist_name') or '').strip()
-                    _create_artist_application_from_post(request, artist_name)
-
-                messages.success(request, "Your artist application has been submitted and is now waiting for admin approval.")
-                return redirect('/profile/?tab=artist_application')
-            except ValueError as exc:
-                messages.error(request, str(exc))
-                return redirect('/profile/?tab=artist_application')
-
-        # --- ARTIST PRODUCT STOCK UPDATE ---
-        elif 'update_artist_stock' in request.POST:
-            if not is_artist:
-                messages.error(request, "Only approved artists can manage product stock.")
-                return redirect('/profile/?tab=account')
-
-            product = get_object_or_404(Artwork, prod_id=request.POST.get('product_id'), artist=artist_obj)
-            try:
-                quantity = int(request.POST.get('stock_qty') or 0)
-            except (TypeError, ValueError):
-                messages.error(request, "Stock quantity must be a whole number.")
-                return redirect('/profile/?tab=artist_products')
-
-            if quantity <= 0:
-                messages.error(request, "Enter a stock quantity greater than zero.")
-                return redirect('/profile/?tab=artist_products')
-
-            adjustment_type = 'Subtract' if 'subtract_stock' in request.POST else 'Add'
-            if adjustment_type == 'Subtract':
-                current_stock = product.stock_qty or 0
-                if quantity > current_stock:
-                    messages.error(request, f"Cannot subtract more than the current stock for {product.title}.")
-                    return redirect('/profile/?tab=artist_products')
-
-            ArtistStockAdjustmentRequest.objects.create(
-                artist=artist_obj,
-                product=product,
-                adjustment_type=adjustment_type,
-                quantity=quantity,
-                status='Pending'
-            )
-            messages.success(request, f"Your {adjustment_type.lower()} stock request for {product.title} is waiting for admin approval.")
-
-            return redirect('/profile/?tab=artist_products')
-
-        # --- APPROVED ARTIST NEW PRODUCT APPLICATION ---
-        elif 'submit_artist_product_application' in request.POST:
-            if not is_artist:
-                messages.error(request, "Only approved artists can submit new products here.")
-                return redirect('/profile/?tab=account')
-
-            if latest_artist_application and latest_artist_application.application_status == 'Pending':
-                messages.error(request, "You already have a pending product application under review.")
-                return redirect('/profile/?tab=artist_products')
-
-            try:
-                with transaction.atomic():
-                    _create_artist_application_from_post(request, artist_obj.artist_name or request.user.get_full_name() or request.user.username)
-                messages.success(request, "Your new product submission is waiting for admin approval.")
-            except ValueError as exc:
-                messages.error(request, str(exc))
-            return redirect('/profile/?tab=artist_products')
-
-        # --- ARTIST MESSAGE REPLY (With Duplicate Protection) ---
-        elif 'artist_update_status' in request.POST:
-            notif_id = request.POST.get('notif_id')
-            new_status = request.POST.get('status_val') 
-            orig_notif = get_object_or_404(Notification, id=notif_id, artist=artist_obj)
-
-            # Cancelled orders are locked and cannot receive new artist status updates.
-            if orig_notif.order.status == 'Cancelled':
-                return redirect('/profile/?tab=messages')
-
-            # Check if this specific update already exists for this order
-            already_sent = Notification.objects.filter(
-                order=orig_notif.order, 
-                artist=artist_obj, 
-                status_update=new_status
-            ).exists()
-
-            if not already_sent:
-                # CREATE ONLY ONE NOTIFICATION (Sender is Artist)
-                # This row will be visible to both Admin and Customer
-                Notification.objects.create(
-                    order=orig_notif.order,
-                    artist=artist_obj,
-                    message_text=f"The artist has marked Order #BK-{orig_notif.order.order_id} as '{new_status}'.",
-                    sender_role='Artist', # Admin sees this in chat
-                    status_update=new_status,
-                    is_read=False
-                )
-
-                # SYNC ORDER/SHIPMENT STATUS
-                if new_status == 'Shipped!':
-                    order = orig_notif.order
-                    order_artist_ids = set(
-                        OrderDetail.objects.filter(order=order).values_list('product__artist_id', flat=True)
-                    )
-                    shipped_artist_ids = set(
-                        Notification.objects.filter(
-                            order=order,
-                            sender_role='Artist',
-                            status_update='Shipped!'
-                        ).values_list('artist_id', flat=True)
-                    )
-
-                    if order_artist_ids and order_artist_ids.issubset(shipped_artist_ids):
-                        order.status = 'Shipped'
-                        if order.shipment:
-                            order.shipment.shipment_status = 'In Transit'
-                            order.shipment.shipment_date = timezone.now().date()
-                            order.shipment.save()
-                        order.save()
-
-            return redirect('/profile/?tab=messages')
+        elif any(key in request.POST for key in [
+            'submit_artist_application',
+            'update_artist_stock',
+            'submit_artist_product_application',
+            'artist_update_status',
+        ]):
+            messages.error(request, "Artist functions are handled by admin.")
+            return redirect('/profile/?tab=account')
 
     # 3. FETCH PURCHASES DATA
     orders_query = Order.objects.filter(user=request.user)
-    if status_tab != 'all':
+    if status_tab == 'to_ship':
+        orders_query = orders_query.filter(status__in=['Processing', 'Prepared'])
+    elif status_tab != 'all':
         orders_query = orders_query.filter(status=status_map.get(status_tab, 'Processing'))
     
     orders = orders_query.order_by('-order_id').select_related('payment', 'shipment', 'shipment__address')
@@ -1530,46 +1615,13 @@ def profile_view(request):
     
     unread_count = customer_notifications.filter(is_read=False).count()
 
-    # 5. ARTIST MESSAGES & EARNINGS LOGIC
-    artist_messages = []
-    unread_artist_count = 0
-    if is_artist:
-        artist_messages_qs = Notification.objects.filter(artist=artist_obj, sender_role='Admin').order_by('-timestamp')
-        if active_tab == 'messages':
-            artist_messages_qs.filter(is_read=False).update(is_read=True)
-        unread_artist_count = artist_messages_qs.filter(is_read=False).count()
-
-        seen_order_ids = set()
-        for msg in artist_messages_qs:
-            if msg.order_id in seen_order_ids:
-                continue
-            seen_order_ids.add(msg.order_id)
-
-            # Calculate earnings for this artist for this specific order
-            artist_items = OrderDetail.objects.filter(order=msg.order, product__artist=artist_obj)
-            msg.artist_subtotal = artist_items.aggregate(Sum('subtotal'))['subtotal__sum'] or 0
-            msg.artist_items = list(artist_items.select_related('product')[:4])
-            msg.artist_item_count = sum(item.quantity or 0 for item in msg.artist_items)
-            
-            # Find current status to disable buttons in HTML
-            latest_reply = Notification.objects.filter(
-                order=msg.order, artist=artist_obj, sender_role='Artist'
-            ).order_by('-timestamp').first()
-            msg.current_artist_status = latest_reply.status_update if latest_reply else None
-            artist_messages.append(msg)
-
     # 6. RENDER
     return render(request, 'products/profile.html', {
         'address': address, 'all_addresses': all_addresses, 'orders': orders,
         'active_tab': active_tab, 'status_tab': status_tab, 'is_artist': is_artist,
-        'artist_messages': artist_messages, 'reviewed_products': reviewed_products,
+        'artist_messages': [], 'reviewed_products': reviewed_products,
         'customer_notifications': customer_notifications, 'unread_count': unread_count,
-        'unread_artist_count': unread_artist_count,
-        'latest_artist_application': latest_artist_application,
-        'application_categories': application_categories,
-        'artist_products': artist_products,
-        'artist_product_options': artist_products_query,
-        'artist_products_page': artist_products_page
+        'unread_artist_count': 0,
     })
 
 @login_required
@@ -1955,14 +2007,8 @@ def place_order(request):
 def cancel_order(request, order_id):
     order = get_object_or_404(Order, order_id=order_id, user=request.user)
     
-    # SECURITY CHECK: Has any artist started preparing this?
-    already_prepared = Notification.objects.filter(
-        order=order, 
-        status_update__in=['Items Prepared', 'Ready for Pickup', 'Item Picked Up']
-    ).exists()
-
-    if already_prepared:
-        messages.error(request, "Cancellation Failed: The artist has already started preparing your order.")
+    if order.status in ['Prepared', 'Shipped', 'Delivered']:
+        messages.error(request, "Cancellation failed: admin has already prepared or shipped your order.")
         return redirect('/profile/?tab=purchases')
 
     # Standard cancellation logic
@@ -1995,26 +2041,18 @@ def notify_artist(request, order_id, artist_id):
         message_text=f"New Order #BK-{order.order_id}. Please prepare the items.",
         sender_role='Admin'
     )
+    _send_mock_artist_email(
+        artist,
+        f"Bicolikha Order #BK-{order.order_id}",
+        f"New Order #BK-{order.order_id}. Please prepare the items."
+    )
     messages.success(request, f"Artist {artist.artist_name} has been notified.")
     return redirect('admin_orders')
 
-@login_required
+@user_passes_test(lambda u: u.is_staff, login_url='admin_login')
 def artist_reply(request, notif_id, status):
-    # This view is for the Artist portal
-    notif = get_object_or_404(Notification, id=notif_id)
-    
-    # Update the notification with the artist's response
-    notif.status_update = status
-    notif.message_text = f"Artist has marked items as: {status}"
-    notif.sender_role = 'Artist'
-    notif.save()
-    
-    # Optionally update the main order status automatically
-    if status == 'Ready for Pickup':
-        notif.order.status = 'Processing'
-        notif.order.save()
-        
-    return redirect('admin_messages') # Or the Artist's message page
+    messages.error(request, "Artist replies are no longer supported. Admin controls order updates.")
+    return redirect('admin_messages')
 
 def artist_detail(request, artist_id):
     # 1. Get current artist
@@ -2059,7 +2097,6 @@ def artist_detail(request, artist_id):
     artist_products_query.pop('page', None)
     artist_products_querystring = artist_products_query.urlencode()
     artist_categories = Category.objects.filter(artwork__artist=artist).distinct().order_by('category_name')
-    address = Address.objects.filter(user=artist.user, address_type='Default').first()
 
     return render(request, 'products/artist_detail.html', {
         'artist': artist,
@@ -2070,7 +2107,7 @@ def artist_detail(request, artist_id):
         'artist_categories': artist_categories,
         'current_sort': sort_by,
         'selected_category': selected_category,
-        'address': address,
+        'address': None,
         'prev_id': prev_id,
         'next_id': next_id
     })

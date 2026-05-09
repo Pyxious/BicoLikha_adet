@@ -295,8 +295,8 @@
         <div class="received-item" data-bs-toggle="modal" data-bs-target="#applicationModal{{ application.application_id }}">
             <div class="text-start">
                 <div class="received-label">Applicant</div>
-                <div class="received-value">{{ application.user.get_full_name|default:application.user.username }}</div>
-                <div class="received-sub">{{ application.user.email }}</div>
+                <div class="received-value">{{ application.applicant_display_name }}</div>
+                <div class="received-sub">{{ application.applicant_display_email|default:"No email" }}</div>
             </div>
             <div class="text-start">
                 <div class="received-label">Artist Request</div>
@@ -396,7 +396,7 @@
                     <div>
                         <div class="received-label mb-1">Artist Application #{{ application.application_id }}</div>
                         <h3 class="application-artist-name">{{ application.artist_name }}</h3>
-                        <div class="application-meta">Submitted by {{ application.user.get_full_name|default:application.user.username }} • {{ application.user.email }}</div>
+                        <div class="application-meta">Submitted by {{ application.applicant_display_name }} • {{ application.applicant_display_email|default:"No email" }}</div>
                     </div>
                     <span class="received-pill {{ application.application_status|lower }}">{{ application.application_status }}</span>
                 </div>
@@ -437,8 +437,8 @@
                     </div>
                     <div class="mb-3">
                         <div class="received-label">Applicant Account</div>
-                        <div class="received-value">{{ application.user.get_full_name|default:application.user.username }}</div>
-                        <div class="received-sub">{{ application.user.email }}</div>
+                        <div class="received-value">{{ application.applicant_display_name }}</div>
+                        <div class="received-sub">{{ application.applicant_display_email|default:"No email" }}</div>
                     </div>
                     <div class="mb-3">
                         <div class="received-label">Submitted</div>

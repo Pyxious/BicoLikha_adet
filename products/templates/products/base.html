@@ -468,6 +468,10 @@
                             <span class="icon-label">{{ user.first_name|default:user.username }}</span>
                         </a>
                     {% else %}
+                        <a href="{% url 'artist_application' %}" title="Apply as Artist" class="header-icon-link">
+                            <i class="fas fa-palette fa-lg"></i>
+                            <span class="icon-label">Apply Artist</span>
+                        </a>
                         <a href="{% url 'login' %}" title="Login" class="header-icon-link">
                             <i class="far fa-user fa-lg"></i>
                             <span class="icon-label">Sign In</span>

@@ -72,11 +72,14 @@
                             </div>
                             <div>
                                 <div class="fw-bold">{{ artist.artist_name }}</div>
-                                <div class="text-muted small">{{ artist.user.email|default:"No linked account" }}</div>
+                                <div class="text-muted small">{{ artist.artist_email|default:"No email on file" }}</div>
                             </div>
                         </div>
                     </td>
-                    <td class="small">{{ artist.artist_phone_num|default:"-" }}</td>
+                    <td class="small">
+                        <div>{{ artist.artist_email|default:"-" }}</div>
+                        <div class="text-muted">{{ artist.artist_phone_num|default:"-" }}</div>
+                    </td>
                     <td><span class="badge bg-secondary-subtle text-secondary px-3 py-2">{{ artist.artist_municipality }}</span></td>
                     <td class="text-muted small">{{ artist.artist_zipcode }}</td>
                     <td class="text-center">
@@ -137,6 +140,10 @@
                                     <div class="col-md-6">
                                         <label class="field-label">Artist Name</label>
                                         <input type="text" name="artist_name" value="{{ artist.artist_name }}" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="field-label">Email</label>
+                                        <input type="email" name="artist_email" value="{{ artist.artist_email }}" class="form-control">
                                     </div>
                                     <div class="col-md-6">
                                         <label class="field-label">Contact Number</label>
