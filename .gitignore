@@ -15,3 +15,5 @@ staticfiles/
 # Windows
 Thumbs.db
 desktop.ini
+
+.env

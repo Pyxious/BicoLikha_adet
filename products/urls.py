@@ -53,12 +53,13 @@ urlpatterns = [
 
     # --- Administrative / Management Hub ---
     path('management/dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('management/search/', views.admin_search, name='admin_search'),
     path('management/analytics/', views.admin_analytics, name='admin_analytics'),
     path('bk-staff-entry-7721/login/', views.HiddenAdminLoginView.as_view(), name='admin_login'),
     path('bk-staff-entry-7721/logout/', views.admin_logout, name='admin_logout'),
     
 
-    
+    path('ai-chat/', views.bicolikha_ai_chat, name='ai_chat'),
     
     # User Management Sub-routes
     path('management/users/', views.admin_users, name='admin_users'),

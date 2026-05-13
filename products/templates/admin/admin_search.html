@@ -1,0 +1,124 @@
+{% extends 'admin/management_base.html' %}
+
+{% block management_content %}
+<style>
+    .search-title { color: var(--sidebar-brown); font-weight: 900; }
+    .search-muted { color: #8a7f79; }
+    .result-section { background: #fff; border: 1px solid #eee; border-radius: 16px; overflow: hidden; margin-bottom: 18px; }
+    .result-head { background: #f8f5f2; padding: 14px 18px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    .result-head h6 { color: var(--sidebar-brown); font-weight: 900; margin: 0; }
+    .result-row { padding: 14px 18px; border-bottom: 1px solid #f1f1f1; display: flex; justify-content: space-between; gap: 18px; align-items: center; }
+    .result-row:last-child { border-bottom: 0; }
+    .result-name { color: var(--sidebar-brown); font-weight: 800; }
+    .result-meta { color: #81756f; font-size: 0.82rem; }
+    .result-action { color: var(--accent-brown); font-weight: 800; text-decoration: none; font-size: 0.82rem; white-space: nowrap; }
+    .empty-search { background: #fffaf6; border: 1.5px dashed #d8c1b6; border-radius: 16px; padding: 35px; text-align: center; color: #8a7f79; }
+</style>
+
+<div class="text-start mb-4">
+    <h2 class="search-title mb-1">Management Search</h2>
+    {% if query %}
+        <div class="search-muted">{{ result_count }} result{{ result_count|pluralize }} for <b>"{{ query }}"</b></div>
+    {% else %}
+        <div class="search-muted">Search products, orders, users, artists, and categories from the top bar.</div>
+    {% endif %}
+</div>
+
+{% if query and result_count == 0 %}
+<div class="empty-search">
+    <i class="fas fa-search fa-2x mb-3"></i>
+    <div class="fw-bold">No admin records found.</div>
+    <div class="small">Try a product name, artist name, customer email, category, status, or order number like BK-13.</div>
+</div>
+{% endif %}
+
+{% if products %}
+<div class="result-section shadow-sm">
+    <div class="result-head">
+        <h6><i class="fas fa-paint-brush me-2"></i>Products</h6>
+        <a href="{% url 'admin_products' %}?q={{ query|urlencode }}#inventory-list" class="result-action">Open Product Search</a>
+    </div>
+    {% for product in products %}
+    <div class="result-row">
+        <div>
+            <div class="result-name">{{ product.title }}</div>
+            <div class="result-meta">{{ product.artist.artist_name|default:"No artist" }} &middot; {{ product.category.category_name|default:"Uncategorized" }} &middot; &#8369;{{ product.price }} &middot; Stock {{ product.stock_qty }}</div>
+        </div>
+        <a href="{% url 'admin_products' %}?q={{ product.title|urlencode }}#inventory-list" class="result-action">View</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if orders %}
+<div class="result-section shadow-sm">
+    <div class="result-head">
+        <h6><i class="fas fa-receipt me-2"></i>Orders</h6>
+        <a href="{% url 'admin_orders' %}" class="result-action">Open Orders</a>
+    </div>
+    {% for order in orders %}
+    <div class="result-row">
+        <div>
+            <div class="result-name">Order #BK-{{ order.order_id }}</div>
+            <div class="result-meta">{{ order.user.email|default:order.user.username }} &middot; {{ order.status }} &middot; &#8369;{{ order.total_amount|floatformat:2 }}</div>
+        </div>
+        <a href="{% url 'admin_orders' %}" class="result-action">View</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if users %}
+<div class="result-section shadow-sm">
+    <div class="result-head">
+        <h6><i class="fas fa-user-friends me-2"></i>Customers</h6>
+        <a href="{% url 'manage_accounts' %}" class="result-action">Open Accounts</a>
+    </div>
+    {% for customer in users %}
+    <div class="result-row">
+        <div>
+            <div class="result-name">{{ customer.get_full_name|default:customer.username }}</div>
+            <div class="result-meta">{{ customer.email|default:"No email" }} &middot; {{ customer.phone_number|default:"No phone" }}</div>
+        </div>
+        <a href="{% url 'manage_accounts' %}" class="result-action">View</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if artists %}
+<div class="result-section shadow-sm">
+    <div class="result-head">
+        <h6><i class="fas fa-palette me-2"></i>Artists</h6>
+        <a href="{% url 'manage_artists' %}" class="result-action">Open Artists</a>
+    </div>
+    {% for artist in artists %}
+    <div class="result-row">
+        <div>
+            <div class="result-name">{{ artist.artist_name }}</div>
+            <div class="result-meta">{{ artist.artist_email|default:"No email" }} &middot; {{ artist.artist_brgy|default:"" }} {{ artist.artist_municipality|default:"" }}</div>
+        </div>
+        <a href="{% url 'manage_artists' %}" class="result-action">View</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if categories %}
+<div class="result-section shadow-sm">
+    <div class="result-head">
+        <h6><i class="fas fa-tags me-2"></i>Categories</h6>
+        <a href="{% url 'admin_products' %}" class="result-action">Open Products</a>
+    </div>
+    {% for category in categories %}
+    <div class="result-row">
+        <div>
+            <div class="result-name">{{ category.category_name }}</div>
+            <div class="result-meta">{{ category.category_desc|default:"No description" }}</div>
+        </div>
+        <a href="{% url 'admin_products' %}?cat={{ category.category_id }}#inventory-list" class="result-action">View Products</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

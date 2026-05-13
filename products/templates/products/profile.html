@@ -1078,6 +1078,29 @@ grid-template-columns: 1fr;
 min-width: 0;
 }
 }
+.sort-select-pill {
+    border: 1.5px solid #d8c1b6;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #5d3a2d;
+    background: #fff;
+    outline: none;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.sort-select-pill:hover {
+    border-color: #8d5e4a;
+    background: #fdfcfb;
+}
+
+.icon-unread { background-color: #f4e8e0 !important; }
+.icon-read { background-color: #e9fcd9 !important; }
+
+/* If you also have logic on the card background */
+.card-unread { background-color: #fdfcfb !important; }
+.card-read { background-color: #ffffff !important; }
 </style>
 <div class="container-fluid">
 <div class="profile-container shadow-sm">
@@ -1289,34 +1312,61 @@ min-width: 0;
             </div>
 
         {% elif active_tab == 'notifications' %}
-            <h2 class="fw-bold mb-4 text-start" style="color: #5d3a2d;">Notifications</h2>
-            {% for n in customer_notifications %}
-            <a href="{% url 'order_detail' n.order.order_id %}" class="notification-link">
-                <div class="notification-card mb-3 text-start {% if not n.is_read %}notif-unread{% endif %}">
-                    <div class="card-body p-4 d-flex align-items-center">
-                        <div class="me-4">
-                            <div class="notification-icon"><i class="fas fa-info-circle fa-lg"></i></div>
+    <!-- 1. HEADER WITH SORTING -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold m-0 text-start" style="color: #5d3a2d;">Notifications</h2>
+        
+        <form method="GET" action="" class="d-flex align-items-center gap-2">
+            <!-- Hidden input to stay on the notifications tab after refreshing -->
+            <input type="hidden" name="tab" value="notifications">
+            
+            <label class="small fw-bold text-muted text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">Sort by:</label>
+            <select name="n_sort" class="sort-select-pill shadow-sm" onchange="this.form.submit()">
+                <option value="newest" {% if notif_sort == 'newest' %}selected{% endif %}>Most Recent</option>
+                <option value="oldest" {% if notif_sort == 'oldest' %}selected{% endif %}>Oldest First</option>
+            </select>
+        </form>
+    </div>
+
+    <!-- 2. NOTIFICATIONS LIST -->
+    {% for n in customer_notifications %}
+    <a href="{% url 'order_detail' n.order.order_id %}" class="notification-link">
+        <div class="notification-card mb-3 text-start {% if not n.is_read %}notif-unread{% endif %}" style="border-radius: 20px;">
+            <div class="card-body p-4 d-flex align-items-center">
+                <div class="me-4">
+                    <!-- Icon color based on status -->
+                     <div class="notification-card mb-3 text-start {% if not n.is_read %}notif-unread card-unread{% else %}card-read{% endif %}" style="border-radius: 20px;">
+                        <i class="fas fa-info-circle fa-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <h6 class="fw-bold mb-1" style="color: #5d3a2d;">Order #BK-{{ n.order.order_id }}</h6>
+                            <p class="mb-0 text-muted small" style="line-height: 1.4;">{{ n.message_text }}</p>
                         </div>
-                        <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between gap-3">
-                                <h6 class="fw-bold mb-1">Order #BK-{{ n.order.order_id }}</h6>
-                                <small class="text-muted">{{ n.timestamp|timesince }} ago</small>
-                            </div>
-                            <p class="mb-0 text-muted small">{{ n.message_text }}</p>
+                        <!-- Date Display -->
+                        <div class="text-end" style="min-width: 80px;">
+                            <small class="text-muted fw-bold" style="font-size: 0.7rem;">{{ n.timestamp|timesince }} ago</small>
+                            {% if not n.is_read %}
+                                <div class="mt-1"><span class="badge bg-danger rounded-circle p-1" style="width:8px; height:8px; display:inline-block;"> </span></div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-            </a>
-            {% empty %}
-            <div class="notification-empty">
-                <i class="far fa-bell"></i>
-                <div class="notification-empty-title">No notifications yet</div>
-                <div class="small">Order updates will appear here.</div>
             </div>
-            {% endfor %}
-
-
+        </div>
+    </a>
+    {% empty %}
+    <!-- 3. EMPTY STATE -->
+    <div class="text-center py-5 opacity-50">
+        <i class="far fa-bell-slash fa-4x mb-3" style="color: #d8c1b6;"></i>
+        <div class="fw-bold h5">No notifications yet</div>
+        <p class="small text-muted">Your order and delivery updates will appear here.</p>
+    </div>
+    {% endfor %}
 {% endif %}
+
 </div>
 </div>
 </div>

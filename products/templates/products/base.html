@@ -430,6 +430,46 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* --- Chatbot Sidebar Design (Side-by-Side) --- */
+        #ai-chat-container { 
+            position: fixed; 
+            bottom: 20px; 
+            right: 20px; 
+            z-index: 9999; 
+            display: flex; 
+            align-items: flex-end; /* Aligns bubble and window to bottom */
+            gap: 15px; /* Space between window and bubble */
+        }
+        
+        #chat-bubble { 
+            width: 60px; height: 60px; 
+            background: var(--nav-brown); 
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            color: white; cursor: pointer; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2); 
+            flex-shrink: 0; /* Prevents bubble from shrinking */
+        }
+
+        #chat-window { 
+            width: 350px; height: 450px; 
+            background: white; border-radius: 20px; 
+            display: none; /* Toggled by JS to 'flex' */
+            flex-direction: column; overflow: hidden; 
+            border: 1px solid #ddd; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+        }
+
+        .chat-header { background: var(--nav-brown); color: white; padding: 15px; font-weight: bold; }
+        .chat-messages { flex-grow: 1; padding: 15px; overflow-y: auto; font-size: 0.85rem; background: #fff; }
+        .chat-input-area { padding: 10px; border-top: 1px solid #eee; display: flex; background: #fff; }
+
+        /* Animations */
+        .flying-bag { position: fixed; z-index: 9999; pointer-events: none; transition: all 0.8s; color: var(--nav-brown); font-size: 1.5rem; }
+        @keyframes cart-bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.3); } }
+        .cart-bounce { animation: cart-bounce 0.5s ease-in-out; }
+
     </style>
 
 </head>
@@ -612,6 +652,27 @@
 
     <!-- Bootstrap 5 JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<div id="ai-chat-container">
+        <div id="chat-window">
+            <div class="chat-header d-flex justify-content-between align-items-center">
+                <span>BicoLikha AI</span>
+                <div class="d-flex gap-2">
+                    <span onclick="clearChat()" style="cursor:pointer; font-size: 0.7rem; opacity: 0.8;">Clear</span>
+                    <span onclick="toggleChat()" style="cursor:pointer">×</span>
+                </div>
+            </div>
+            <div id="chat-msgs" class="chat-messages text-start">
+                <div class="mb-2"><b>AI:</b> Hello! How can I help you find Bicolano art today?</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="ai-msg-input" class="form-control form-control-sm rounded-pill" placeholder="Ask me anything...">
+                <button onclick="sendAiMessage()" class="btn btn-sm text-primary"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+        <div id="chat-bubble" onclick="toggleChat()">
+            <i class="fas fa-robot fa-lg"></i>
+        </div>
+    </div>
 
 </body>
 </html>
@@ -699,5 +760,109 @@ async function handleAddToCart(event, productId) {
         window.location.href = "{% url 'login' %}";
     }
 }
+
+function toggleChat() {
+        const win = document.getElementById('chat-window');
+        win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    async function sendAiMessage() {
+        const input = document.getElementById('ai-msg-input');
+        const box = document.getElementById('chat-msgs');
+        const msg = input.value;
+        if(!msg) return;
+
+        box.innerHTML += `<div class="mb-2 text-end"><b>You:</b> ${msg}</div>`;
+        input.value = '';
+
+        const formData = new FormData();
+        formData.append('message', msg);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        const response = await fetch('/ai-chat/', { method: 'POST', body: formData });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            box.innerHTML += `<div class="mb-2"><b>AI:</b> ${data.response}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+    }
+
+    // 1. Run this immediately when any page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        loadChatHistory();
+    });
+
+    function toggleChat() {
+        const win = document.getElementById('chat-window');
+        win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+        // Scroll to bottom when opening
+        const box = document.getElementById('chat-msgs');
+        box.scrollTop = box.scrollHeight;
+    }
+
+    // SAVE: Put the current chat HTML into the browser's memory
+    function saveChatHistory() {
+        const chatContent = document.getElementById('chat-msgs').innerHTML;
+        localStorage.setItem('bicolikha_ai_history', chatContent);
+    }
+
+    // LOAD: Pull the history back out when the page changes
+    function loadChatHistory() {
+        const savedHistory = localStorage.getItem('bicolikha_ai_history');
+        if (savedHistory) {
+            document.getElementById('chat-msgs').innerHTML = savedHistory;
+        }
+    }
+
+    // CLEAR: Delete the memory
+    function clearChat() {
+        if(confirm("Clear conversation history?")) {
+            localStorage.removeItem('bicolikha_ai_history');
+            document.getElementById('chat-msgs').innerHTML = '<div class="mb-2"><b>AI:</b> Hello! How can I help you find Bicolano art today?</div>';
+        }
+    }
+
+    async function sendAiMessage() {
+        const input = document.getElementById('ai-msg-input');
+        const box = document.getElementById('chat-msgs');
+        const msg = input.value.trim();
+        if(!msg) return;
+
+        // Add user message to UI
+        box.innerHTML += `<div class="mb-2 text-end"><b>You:</b> ${msg}</div>`;
+        input.value = '';
+        box.scrollTop = box.scrollHeight;
+        
+        // Save history immediately after user speaks
+        saveChatHistory();
+
+        const formData = new FormData();
+        formData.append('message', msg);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        try {
+            const response = await fetch('/ai-chat/', { method: 'POST', body: formData });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                // Add AI response to UI
+                box.innerHTML += `<div class="mb-2"><b>AI:</b> ${data.response}</div>`;
+                box.scrollTop = box.scrollHeight;
+                
+                // Save history again after AI speaks
+                saveChatHistory();
+            }
+        } catch (error) {
+            console.error('Chat error:', error);
+        }
+    }
+
+    // Allow pressing "Enter" to send
+    document.getElementById('ai-msg-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            sendAiMessage();
+        }
+    });
 </script>
 

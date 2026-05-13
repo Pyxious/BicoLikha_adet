@@ -279,11 +279,28 @@
 
 <!-- 3. INVENTORY TABLE SECTION -->
 <div class="bg-white border rounded-4 overflow-hidden shadow-sm" id="inventory-list">
-    <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+    <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center flex-wrap gap-3">
         <h6 class="fw-bold m-0">Inventory List</h6>
         <div class="d-flex gap-3">
-            <form method="GET" class="d-flex gap-2">
+            <form method="GET" action="#inventory-list" class="d-flex gap-2 flex-wrap justify-content-end">
                 <input type="text" name="q" value="{{ search_query }}" placeholder="Search products..." class="form-control form-control-sm rounded-pill px-3" style="width: 250px;">
+                <select name="sort" class="form-select form-select-sm rounded-pill px-3" style="width: 230px;">
+                    <option value="recent_desc" {% if current_sort == 'recent_desc' %}selected{% endif %}>Recent stock changes</option>
+                    <option value="recent_asc" {% if current_sort == 'recent_asc' %}selected{% endif %}>Oldest stock changes</option>
+                    <option value="name_asc" {% if current_sort == 'name_asc' %}selected{% endif %}>Name A-Z</option>
+                    <option value="name_desc" {% if current_sort == 'name_desc' %}selected{% endif %}>Name Z-A</option>
+                    <option value="artist_asc" {% if current_sort == 'artist_asc' %}selected{% endif %}>Artist A-Z</option>
+                    <option value="artist_desc" {% if current_sort == 'artist_desc' %}selected{% endif %}>Artist Z-A</option>
+                    <option value="price_asc" {% if current_sort == 'price_asc' %}selected{% endif %}>Price Low-High</option>
+                    <option value="price_desc" {% if current_sort == 'price_desc' %}selected{% endif %}>Price High-Low</option>
+                    <option value="stock_desc" {% if current_sort == 'stock_desc' %}selected{% endif %}>Stock High-Low</option>
+                    <option value="stock_asc" {% if current_sort == 'stock_asc' %}selected{% endif %}>Stock Low-High</option>
+                    <option value="category_asc" {% if current_sort == 'category_asc' %}selected{% endif %}>Category A-Z</option>
+                    <option value="category_desc" {% if current_sort == 'category_desc' %}selected{% endif %}>Category Z-A</option>
+                </select>
+                {% for cat_id in selected_cats %}
+                <input type="hidden" name="cat" value="{{ cat_id }}">
+                {% endfor %}
                 <button type="submit" class="btn btn-sm btn-dark rounded-pill px-3">Search</button>
             </form>
         </div>
@@ -296,6 +313,7 @@
                 <th>Artist</th>
                 <th>Price</th>
                 <th>Stock</th>
+                <th>Last Supply</th>
             </tr>
         </thead>
         <tbody>
@@ -313,6 +331,13 @@
                 <td>{{ artwork.artist.artist_name }}</td>
                 <td class="fw-bold">&#8369;{{ artwork.price }}</td>
                 <td class="fw-bold {% if artwork.stock_qty <= 5 %}text-danger{% else %}text-success{% endif %}">{{ artwork.stock_qty }}</td>
+                <td class="text-muted small">
+                    {% if artwork.latest_supplied_date %}
+                        {{ artwork.latest_supplied_date|date:"M d, Y h:i A" }}
+                    {% else %}
+                        No supply record
+                    {% endif %}
+                </td>
             </tr>
 
             <!-- EDIT MODAL (INSIDE LOOP) -->

@@ -12,6 +12,12 @@
     .audit-item { border-left: 3px solid var(--bicol-green); padding: 10px 15px; margin-bottom: 10px; background: #fff; border-radius: 0 8px 8px 0; font-size: 0.85rem; }
     .btn-export { border: 1px solid #ddd; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #666; transition: 0.3s; }
     .btn-export:hover { background: #f8f9fa; border-color: #8d5e4a; color: #8d5e4a; }
+    .report-filter-label { font-size: 0.72rem; font-weight: 800; color: #8d5e4a; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .biweekly-summary { border: 1px solid #eee; border-radius: 12px; padding: 16px; background: #fff; height: 100%; }
+    .biweekly-summary.active { border-color: #5f9e40; background: #f8fff4; }
+    .biweekly-summary small { color: #777; font-weight: 700; text-transform: uppercase; font-size: 0.68rem; }
+    .biweekly-summary h4 { color: #5d3a2d; font-weight: 900; margin: 4px 0; }
+    .payout-note { font-size: 0.78rem; color: #777; }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -19,8 +25,12 @@
         
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-export bg-white px-3"><i class="fas fa-file-pdf me-2 text-danger"></i>Export PDF</button>
-        <button class="btn btn-export bg-white px-3"><i class="fas fa-file-csv me-2 text-success"></i>Export CSV</button>
+        <a class="btn btn-export bg-white px-3" href="?month={{ selected_month }}&year={{ selected_year }}&period={{ selected_period }}&sort={{ selected_sort }}&export=pdf">
+            <i class="fas fa-file-pdf me-2 text-danger"></i>Export PDF
+        </a>
+        <a class="btn btn-export bg-white px-3" href="?month={{ selected_month }}&year={{ selected_year }}&period={{ selected_period }}&sort={{ selected_sort }}&export=csv">
+            <i class="fas fa-file-csv me-2 text-success"></i>Export CSV
+        </a>
     </div>
 </div>
 
@@ -40,6 +50,104 @@
             <h1 class="fw-bold mb-0">{{ active_artists }}</h1>
         </div>
     </div>
+</div>
+
+<!-- 2. BIWEEKLY ARTIST SALES REPORT -->
+<div class="p-4 bg-white shadow-sm mb-4" style="border-radius: 15px; border: 1px solid #eee;">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h6 class="card-title mb-1"><i class="fas fa-calendar-week me-2 text-success"></i>Biweekly Artist Sales</h6>
+            <div class="payout-note">
+                {{ month_label }} {{ selected_year }} &middot; {{ report_start|date:"M d" }} to {{ report_end|date:"M d" }}.
+                Product sales only; cancelled orders and shipping fees are excluded.
+            </div>
+        </div>
+        <form method="GET" class="d-flex flex-wrap align-items-end gap-2">
+            <div>
+                <div class="report-filter-label">Month</div>
+                <select name="month" class="form-select form-select-sm">
+                    {% for month in month_options %}
+                    <option value="{{ month.value }}" {% if month.value == selected_month %}selected{% endif %}>{{ month.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <div class="report-filter-label">Year</div>
+                <select name="year" class="form-select form-select-sm">
+                    {% for year in year_options %}
+                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <div class="report-filter-label">Payout Period</div>
+                <select name="period" class="form-select form-select-sm">
+                    <option value="all" {% if selected_period == 'all' %}selected{% endif %}>Whole Month</option>
+                    <option value="first" {% if selected_period == 'first' %}selected{% endif %}>1st Biweekly: 1-15</option>
+                    <option value="second" {% if selected_period == 'second' %}selected{% endif %}>2nd Biweekly: 16-End</option>
+                </select>
+            </div>
+            <div>
+                <div class="report-filter-label">Sort</div>
+                <select name="sort" class="form-select form-select-sm">
+                    <option value="sales_desc" {% if selected_sort == 'sales_desc' %}selected{% endif %}>Highest Sales</option>
+                    <option value="sales_asc" {% if selected_sort == 'sales_asc' %}selected{% endif %}>Lowest Sales</option>
+                    <option value="artist_asc" {% if selected_sort == 'artist_asc' %}selected{% endif %}>Artist A-Z</option>
+                    <option value="artist_desc" {% if selected_sort == 'artist_desc' %}selected{% endif %}>Artist Z-A</option>
+                    <option value="items_desc" {% if selected_sort == 'items_desc' %}selected{% endif %}>Most Items Sold</option>
+                    <option value="orders_desc" {% if selected_sort == 'orders_desc' %}selected{% endif %}>Most Orders</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-sm text-white px-3" style="background:#5d3a2d; border-radius:8px;">Apply</button>
+        </form>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="biweekly-summary {% if selected_period == 'first' %}active{% endif %}">
+                <small>1st Biweekly Payout</small>
+                <h4>&#8369;{{ first_half_totals.total_sales|default:0|floatformat:2 }}</h4>
+                <div class="payout-note">Days 1-15 &middot; {{ first_half_totals.items_sold|default:0 }} item(s)</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="biweekly-summary {% if selected_period == 'second' %}active{% endif %}">
+                <small>2nd Biweekly Payout</small>
+                <h4>&#8369;{{ second_half_totals.total_sales|default:0|floatformat:2 }}</h4>
+                <div class="payout-note">Days 16-{{ month_end|date:"d" }} &middot; {{ second_half_totals.items_sold|default:0 }} item(s)</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="biweekly-summary {% if selected_period == 'all' %}active{% endif %}">
+                <small>Selected Report Total</small>
+                <h4>&#8369;{{ report_total.total_sales|default:0|floatformat:2 }}</h4>
+                <div class="payout-note">{{ report_total.items_sold|default:0 }} item(s) in the selected period</div>
+            </div>
+        </div>
+    </div>
+
+    <table class="table table-report table-hover align-middle mb-0">
+        <thead>
+            <tr>
+                <th class="ps-3">Artist</th>
+                <th class="text-center">Orders</th>
+                <th class="text-center">Items Sold</th>
+                <th class="text-end pe-3">Artist Sales</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in artist_sales_reports %}
+            <tr>
+                <td class="ps-3 fw-bold">{{ item.product__artist__artist_name|default:"Unknown Artist" }}</td>
+                <td class="text-center">{{ item.order_count }}</td>
+                <td class="text-center">{{ item.items_sold }}</td>
+                <td class="text-end pe-3 text-danger fw-bold">&#8369;{{ item.total_sales|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center py-4 text-muted">No artist sales for this payout period.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
 <div class="row g-4">
@@ -83,8 +191,8 @@
                     </div>
                     <div class="text-muted" style="font-size: 0.7rem;">
                         <i class="fas fa-user-shield me-1"></i> {{ log.user.username }} 
-                        <span class="mx-2">|</span>
-                        <i class="fas fa-network-wired me-1"></i> IP: {{ log.ip_address }}
+                        <span class="mx-2"></span>
+                
                     </div>
                 </div>
                 {% empty %}

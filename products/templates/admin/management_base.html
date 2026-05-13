@@ -1,9 +1,13 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bikolikha | Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -14,12 +18,17 @@
             --bg-grey: #e6e1df;
             --accent-brown: #8d5e4a;
         }
-        body { background-color: #fff; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        body, button, input, select, textarea { font-family: 'Inter', sans-serif; }
+        body { background-color: #fff; overflow-x: hidden; }
         
         /* Topbar */
         .topbar { background-color: var(--header-green); padding: 10px 40px; border-bottom: 1px solid #ddd; position: fixed; width: 100%; z-index: 1000; height: 70px; }
-        .search-box { background: white; border-radius: 20px; border: 1px solid var(--sidebar-brown); padding: 5px 20px; width: 400px; }
-        .search-box input { border: none; outline: none; width: 90%; }
+        .brand-link { display: inline-flex; align-items: center; gap: 10px; color: var(--sidebar-brown); text-decoration: none; }
+        .brand-logo { width: 46px; height: 24px; object-fit: contain; }
+        .brand-text { font-weight: 900; font-size: 1.45rem; letter-spacing: 0; }
+        .search-box { background: white; border-radius: 20px; border: 1px solid var(--sidebar-brown); padding: 5px 16px; width: 400px; display: flex; align-items: center; }
+        .search-box input { border: none; outline: none; width: 100%; background: transparent; color: var(--sidebar-brown); }
+        .search-box button { border: 0; background: transparent; color: var(--sidebar-brown); padding: 0; }
 
         /* Sidebar */
         .sidebar { 
@@ -81,13 +90,16 @@
 
     <!-- TOPBAR -->
     <div class="topbar d-flex justify-content-between align-items-center">
-        <span class="fw-bold fs-4" style="color:var(--sidebar-brown)">bicolikha</span>
+        <a href="{% url 'admin_dashboard' %}" class="brand-link">
+            <img src="{% static 'images/Vector1.png' %}" alt="BicoLikha logo" class="brand-logo">
+            <span class="brand-text">bicolikha</span>
+        </a>
         
         {% if user.is_authenticated and user.is_staff %}
-        <div class="search-box d-none d-md-block">
-            <i class="fas fa-search me-2"></i>
-            <input type="text" placeholder="Search data...">
-        </div>
+        <form method="GET" action="{% url 'admin_search' %}" class="search-box d-none d-md-flex">
+            <button type="submit" aria-label="Search management data"><i class="fas fa-search me-2"></i></button>
+            <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Search products, orders, users...">
+        </form>
         <div class="d-flex align-items-center">
             <i class="far fa-bell mx-3"></i>
             <i class="far fa-star mx-3"></i>

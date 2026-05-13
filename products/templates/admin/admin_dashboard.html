@@ -21,6 +21,7 @@
     /* Controls */
     .filter-btn { border: 1.5px solid var(--nav-brown); background: white; color: #666; padding: 8px 30px; border-radius: 10px; font-weight: 600; transition: 0.3s; }
     .filter-btn.active { background: var(--light-green); color: var(--text-brown); }
+    .overview-wrap { height: 260px; }
 </style>
 
 
@@ -56,12 +57,14 @@
             <h2 class="chart-title">Overview</h2>
             <p class="chart-subtitle">Profit and Revenue</p>
             
-            <canvas id="overviewChart" height="200"></canvas>
+            <div class="overview-wrap">
+                <canvas id="overviewChart"></canvas>
+            </div>
 
             <div class="d-flex gap-3 mt-4">
-                <button class="filter-btn">Today</button>
-                <button class="filter-btn">This Week</button>
-                <button class="filter-btn active">This Month</button>
+                <button type="button" class="filter-btn" data-overview-period="today">Today</button>
+                <button type="button" class="filter-btn" data-overview-period="week">This Week</button>
+                <button type="button" class="filter-btn active" data-overview-period="month">This Month</button>
             </div>
         </div>
     </div>
@@ -87,18 +90,82 @@
 </div>
 
 {{ status_distribution|json_script:"status-data" }}
+{{ overview_chart_data|json_script:"overview-data" }}
 <script>
-    // Overview Line Chart
-    new Chart(document.getElementById('overviewChart'), {
-        type: 'line',
-        data: {
-            labels: ['Mar 1', 'Mar 5', 'Mar 9', 'Mar 13', 'Mar 17', 'Mar 21', 'Mar 25', 'Mar 29'],
+    const overviewData = JSON.parse(document.getElementById('overview-data').textContent);
+    const overviewButtons = document.querySelectorAll('[data-overview-period]');
+    const currencyFormatter = new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        maximumFractionDigits: 0
+    });
+
+    function overviewDataset(periodKey) {
+        const period = overviewData[periodKey] || overviewData.month;
+        return {
+            labels: period.labels,
             datasets: [
-                { label: 'Revenue', data: [500, 600, 550, 700, 650, 800, 750, 900], borderColor: '#8d5e4a', tension: 0.4, borderWeight: 4, pointRadius: 0 },
-                { label: 'Profit', data: [400, 450, 420, 500, 480, 550, 520, 600], borderColor: '#5f9e40', tension: 0.4, borderWeight: 4, pointRadius: 0 }
+                {
+                    label: 'Revenue',
+                    data: period.revenue,
+                    borderColor: '#8d5e4a',
+                    backgroundColor: 'rgba(141, 94, 74, 0.10)',
+                    tension: 0.35,
+                    borderWidth: 4,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    fill: true
+                },
+                {
+                    label: 'Profit',
+                    data: period.profit,
+                    borderColor: '#5f9e40',
+                    backgroundColor: 'rgba(95, 158, 64, 0.08)',
+                    tension: 0.35,
+                    borderWidth: 4,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    fill: true
+                }
             ]
-        },
-        options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
+        };
+    }
+
+    const overviewChart = new Chart(document.getElementById('overviewChart'), {
+        type: 'line',
+        data: overviewDataset('month'),
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true } },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.dataset.label}: ${currencyFormatter.format(context.raw || 0)}`
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: (value) => currencyFormatter.format(value) }
+                }
+            }
+        }
+    });
+
+    overviewButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            overviewButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            const nextData = overviewDataset(button.dataset.overviewPeriod);
+            overviewChart.data.labels = nextData.labels;
+            overviewChart.data.datasets = nextData.datasets;
+            overviewChart.update();
+        });
     });
 
     const statusRaw = JSON.parse(document.getElementById('status-data').textContent);
