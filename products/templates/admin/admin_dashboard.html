@@ -35,7 +35,7 @@
     </div>
     <div class="dash-card shadow-sm">
         <div class="stat-label">Revenue</div>
-        <div class="stat-value">₱{{ total_revenue|floatformat:2 }}</div>
+        <div class="stat-value">PHP {{ total_revenue|floatformat:2 }}</div>
         <div class="stat-trend text-success"></div>
     </div>
     <div class="dash-card shadow-sm">
@@ -75,10 +75,10 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h2 class="chart-title">Performance</h2>
-                    <p class="chart-subtitle">Order Status Distribution</p>
+                    <p class="chart-subtitle">Top artists by items sold</p>
                 </div>
                 <div class="d-flex align-items-center gap-2 text-muted small fw-bold">
-                    <i class="fas fa-chevron-left"></i> By Artist <i class="fas fa-chevron-right"></i>
+                    <i class="fas fa-palette"></i> By Artist
                 </div>
             </div>
             
@@ -89,7 +89,7 @@
     </div>
 </div>
 
-{{ status_distribution|json_script:"status-data" }}
+{{ performance_chart_data|json_script:"performance-data" }}
 {{ overview_chart_data|json_script:"overview-data" }}
 <script>
     const overviewData = JSON.parse(document.getElementById('overview-data').textContent);
@@ -168,20 +168,21 @@
         });
     });
 
-    const statusRaw = JSON.parse(document.getElementById('status-data').textContent);
-    
-    // Process it for Chart.js
-    const statusLabels = statusRaw.map(s => s.status);
-    const statusValues = statusRaw.map(s => s.count);
+    const performanceRaw = JSON.parse(document.getElementById('performance-data').textContent);
+    const hasPerformanceData = performanceRaw.values && performanceRaw.values.length;
+    const performanceLabels = hasPerformanceData ? performanceRaw.labels : ['No completed sales yet'];
+    const performanceValues = hasPerformanceData ? performanceRaw.values : [1];
 
     // Performance Donut Chart
     new Chart(document.getElementById('performanceChart'), {
         type: 'doughnut',
         data: {
-            labels: statusLabels,
+            labels: performanceLabels,
             datasets: [{
-                data: statusValues,
-                backgroundColor: ['#A8DADC', '#F1FAEE', '#E9C46A', '#F4A261', '#E76F51'],
+                data: performanceValues,
+                backgroundColor: hasPerformanceData
+                    ? ['#8d5e4a', '#5f9e40', '#e6b23c', '#b98a76', '#7da7d8', '#b5533f']
+                    : ['#eadfd8'],
                 borderWidth: 0
             }]
         },

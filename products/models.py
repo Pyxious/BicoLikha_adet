@@ -166,18 +166,6 @@ class ArtistApplicationProduct(models.Model):
     class Meta:
         db_table = 'artist_application_products'
 
-class ArtistStockAdjustmentRequest(models.Model):
-    request_id = models.AutoField(primary_key=True, db_column='REQUEST_ID')
-    artist = models.ForeignKey(Artist, on_delete=models.CASCADE, db_column='ARTIST_ID')
-    product = models.ForeignKey(Artwork, on_delete=models.CASCADE, db_column='PROD_ID')
-    adjustment_type = models.CharField(max_length=20, db_column='ADJUSTMENT_TYPE')
-    quantity = models.IntegerField(db_column='QUANTITY')
-    status = models.CharField(max_length=50, db_column='REQUEST_STATUS', default='Pending')
-    date_submitted = models.DateTimeField(auto_now_add=True, db_column='DATE_SUBMITTED')
-    date_reviewed = models.DateTimeField(null=True, blank=True, db_column='DATE_REVIEWED')
-
-    class Meta:
-        db_table = 'artist_stock_adjustment_requests'
 
 class Cart(models.Model):
     cart_id = models.AutoField(primary_key=True, db_column='CART_ID')

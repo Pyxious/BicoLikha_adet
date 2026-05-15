@@ -1,62 +1,49 @@
 {% extends 'admin/management_base.html' %}
 
 {% block management_content %}
-<!-- 1. Include Chart.js Library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    :root { 
-        --bicol-dark: #5d3a2d;      /* Deep Brown */
-        --bicol-primary: #8d5e4a;   /* Sienna */
-        --bicol-accent: #b98a76;    /* Tan */
-        --bicol-green: #5f9e40;     /* Forest Green */
-        --bicol-light-green: #c8e3ae; /* Soft Lime */
-        --bicol-cream: #fffaf7;     /* Background Tint */
+    :root {
+        --bicol-dark: #5d3a2d;
+        --bicol-primary: #8d5e4a;
+        --bicol-accent: #b98a76;
+        --bicol-green: #5f9e40;
+        --bicol-gold: #e6b23c;
+        --bicol-line: #eadfd8;
+        --bicol-soft: #fffaf7;
     }
-    
-    .analytics-title { color: var(--bicol-dark); font-weight: 900; letter-spacing: -0.5px; }
-    
-    /* Stat Card Styling */
-    .stat-card {
-        background: white;
-        border-radius: 20px;
-        padding: 25px;
-        border: 1.5px solid #f0e7e2;
-        transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        height: 100%;
-        position: relative;
-        overflow: hidden;
-    }
-    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(93, 58, 45, 0.08); border-color: var(--bicol-primary); }
-    
-    .stat-label { font-size: 0.7rem; font-weight: 800; color: #a68a7a; text-transform: uppercase; letter-spacing: 1.2px; }
-    .stat-value { font-size: 2rem; font-weight: 900; color: var(--bicol-dark); margin-top: 5px; }
-    
-    /* Decorative Bar on Stat Cards */
-    .stat-bar { position: absolute; top: 0; left: 0; height: 100%; width: 6px; }
 
-    /* Chart Container Styling */
-    .chart-container {
-        background: white;
-        border-radius: 24px;
-        padding: 30px;
-        border: 1.5px solid #f0e7e2;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        box-shadow: 0 10px 25px rgba(93, 58, 45, 0.03);
+    .analytics-head {
+        background: linear-gradient(135deg, #fffaf7 0%, #f4efe9 100%);
+        border: 1px solid var(--bicol-line);
+        border-radius: 16px;
+        padding: 20px;
     }
-    .chart-title { font-weight: 900; color: var(--bicol-dark); margin-bottom: 25px; font-size: 1.1rem; }
-    .chart-wrapper { position: relative; flex-grow: 1; min-height: 300px; }
+    .analytics-title {
+        color: var(--bicol-dark);
+        font-weight: 900;
+        letter-spacing: -0.5px;
+    }
+    .analytics-period {
+        color: #8f776b;
+        font-size: 0.85rem;
+        font-weight: 700;
+        margin-top: 4px;
+    }
 
     .filter-pill {
         background: white;
-        border: 1.5px solid #eadfd8;
-        border-radius: 12px;
-        padding: 6px 22px;
+        border: 1.5px solid var(--bicol-line);
+        border-radius: 999px;
+        color: var(--bicol-primary);
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        padding: 6px 20px;
         font-size: 0.8rem;
         font-weight: 800;
-        color: var(--bicol-primary);
+        text-decoration: none;
         transition: 0.2s;
     }
     .filter-pill.active {
@@ -65,25 +52,96 @@
         color: white;
         box-shadow: 0 4px 12px rgba(141, 94, 74, 0.2);
     }
-    .filter-pill:hover:not(.active) { background: #fff1eb; }
+    .filter-pill:hover:not(.active) {
+        background: #fff1eb;
+        color: var(--bicol-primary);
+    }
+
+    .stat-card {
+        background: white;
+        border: 1.5px solid var(--bicol-line);
+        border-radius: 12px;
+        height: 100%;
+        overflow: hidden;
+        padding: 25px;
+        position: relative;
+        transition: 0.25s ease;
+    }
+    .stat-card:hover {
+        border-color: var(--bicol-primary);
+        box-shadow: 0 12px 24px rgba(93, 58, 45, 0.08);
+        transform: translateY(-3px);
+    }
+    .stat-bar {
+        height: 100%;
+        left: 0;
+        position: absolute;
+        top: 0;
+        width: 6px;
+    }
+    .stat-label {
+        color: #a68a7a;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+    }
+    .stat-value {
+        color: var(--bicol-dark);
+        font-size: 2rem;
+        font-weight: 900;
+        margin-top: 5px;
+    }
+
+    .chart-container {
+        background: white;
+        border: 1.5px solid var(--bicol-line);
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(93, 58, 45, 0.03);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        padding: 30px;
+    }
+    .chart-title {
+        color: var(--bicol-dark);
+        font-size: 1.1rem;
+        font-weight: 900;
+        margin-bottom: 6px;
+    }
+    .chart-subtitle {
+        color: #9b8174;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-bottom: 24px;
+    }
+    .chart-wrapper {
+        flex-grow: 1;
+        min-height: 300px;
+        position: relative;
+    }
 </style>
 
-<div class="mb-5 d-flex justify-content-between align-items-center">
-    <h2 class="analytics-title mb-0">Analytics Overview</h2>
-    <div class="d-flex gap-2">
-        <button class="filter-pill active">Today</button>
-        <button class="filter-pill">This Week</button>
-        <button class="filter-pill">This Month</button>
+<div class="analytics-head mb-5 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+    <div>
+        <h2 class="analytics-title mb-0">Analytics Overview</h2>
+        <div class="analytics-period">{{ period_label }} performance</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        {% for option in period_options %}
+            <a href="?period={{ option.key }}" class="filter-pill {% if selected_period == option.key %}active{% endif %}">
+                {{ option.label }}
+            </a>
+        {% endfor %}
     </div>
 </div>
 
-<!-- TOP STAT CARDS -->
 <div class="row g-4 mb-5">
     <div class="col-md-4">
         <div class="stat-card shadow-sm">
             <div class="stat-bar" style="background: var(--bicol-primary);"></div>
             <div class="stat-label">Total Revenue</div>
-            <div class="stat-value">₱{{ total_revenue|floatformat:2 }}</div>
+            <div class="stat-value">PHP {{ total_revenue|floatformat:2 }}</div>
         </div>
     </div>
     <div class="col-md-4">
@@ -95,29 +153,28 @@
     </div>
     <div class="col-md-4">
         <div class="stat-card shadow-sm">
-            <div class="stat-bar" style="background: #e6b23c;"></div>
-            <div class="stat-label">System Users</div>
+            <div class="stat-bar" style="background: var(--bicol-gold);"></div>
+            <div class="stat-label">New Users</div>
             <div class="stat-value">{{ total_users }}</div>
         </div>
     </div>
 </div>
 
-<!-- CHARTS GRID -->
 <div class="row g-4 mb-5 d-flex align-items-stretch text-start">
-    <!-- Sales by Category -->
     <div class="col-md-5">
         <div class="chart-container shadow-sm">
-            <h6 class="chart-title"><i class="fas fa-leaf me-2 text-success"></i>Sales by Category</h6>
+            <h6 class="chart-title"></i>Sales by Category</h6>
+            <div class="chart-subtitle">Items sold during {{ period_label|lower }}</div>
             <div class="chart-wrapper">
                 <canvas id="categoryChart"></canvas>
             </div>
         </div>
     </div>
 
-    <!-- Fulfillment Status -->
     <div class="col-md-7">
         <div class="chart-container shadow-sm">
             <h6 class="chart-title"><i class="fas fa-boxes-packing me-2" style="color: var(--bicol-primary);"></i>Order Fulfillment</h6>
+            <div class="chart-subtitle">Order status count during {{ period_label|lower }}</div>
             <div class="chart-wrapper">
                 <canvas id="statusChart"></canvas>
             </div>
@@ -125,7 +182,6 @@
     </div>
 </div>
 
-<!-- SECURE DATA INJECTION -->
 {{ category_sales|json_script:"category-json" }}
 {{ status_counts|json_script:"status-json" }}
 
@@ -133,19 +189,30 @@
     const categoryRaw = JSON.parse(document.getElementById('category-json').textContent);
     const statusRaw = JSON.parse(document.getElementById('status-json').textContent);
 
-    const catLabels = categoryRaw.map(item => item.category_name || 'Uncategorized');
-    const catData = categoryRaw.map(item => item.total_sold || 0);
+    const hasCategoryData = categoryRaw.length > 0;
+    const catLabels = hasCategoryData
+        ? categoryRaw.map(item => item.product__category__category_name || 'Uncategorized')
+        : ['No sales yet'];
+    const catData = hasCategoryData
+        ? categoryRaw.map(item => item.total_sold || 0)
+        : [1];
 
-    const statusLabels = statusRaw.map(item => item.status);
-    const statusData = statusRaw.map(item => item.count);
+    const hasStatusData = statusRaw.length > 0;
+    const statusLabels = hasStatusData
+        ? statusRaw.map(item => item.status || 'Unspecified')
+        : ['No orders yet'];
+    const statusData = hasStatusData
+        ? statusRaw.map(item => item.count || 0)
+        : [1];
 
-    // BRAND COLOR PALETTE
     const bicolColors = {
-        delivered: '#5f9e40',  // Forest Green
-        processing: '#8d5e4a', // Sienna
-        shipped: '#7da7d8',    // Muted Blue
-        cancelled: '#b5533f',  // Terracotta Red
-        other: '#eadfd8'       // Beige
+        delivered: '#5f9e40',
+        processing: '#8d5e4a',
+        shipped: '#7da7d8',
+        cancelled: '#b5533f',
+        pending: '#e6b23c',
+        prepared: '#b98a76',
+        other: '#eadfd8'
     };
 
     const statusColors = statusLabels.map(label => {
@@ -153,18 +220,21 @@
         if (label === 'Cancelled') return bicolColors.cancelled;
         if (label === 'Shipped') return bicolColors.shipped;
         if (label === 'Processing') return bicolColors.processing;
+        if (label === 'Prepared') return bicolColors.prepared;
+        if (label === 'Pending' || label === 'To Pay') return bicolColors.pending;
         return bicolColors.other;
     });
 
-    // 1. Doughnut Chart (Sales by Category)
     new Chart(document.getElementById('categoryChart'), {
         type: 'doughnut',
         data: {
             labels: catLabels,
             datasets: [{
                 data: catData,
-                backgroundColor: ['#5d3a2d', '#8d5e4a', '#b98a76', '#5f9e40', '#c8e3ae'],
-                hoverOffset: 15,
+                backgroundColor: hasCategoryData
+                    ? ['#5d3a2d', '#8d5e4a', '#b98a76', '#5f9e40', '#e6b23c', '#7da7d8']
+                    : ['#eadfd8'],
+                hoverOffset: hasCategoryData ? 15 : 0,
                 borderWidth: 4,
                 borderColor: '#ffffff'
             }]
@@ -172,20 +242,28 @@
         options: {
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true, font: { size: 12, weight: '700' }, color: '#5d3a2d' } }
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#5d3a2d',
+                        font: { size: 12, weight: '700' },
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: { enabled: hasCategoryData }
             }
         }
     });
 
-    // 2. Bar Chart (Fulfillment Status)
     new Chart(document.getElementById('statusChart'), {
         type: 'bar',
         data: {
             labels: statusLabels,
             datasets: [{
                 data: statusData,
-                backgroundColor: statusColors,
-                borderRadius: 12,
+                backgroundColor: hasStatusData ? statusColors : ['#eadfd8'],
+                borderRadius: 10,
                 barThickness: 45
             }]
         },
@@ -193,20 +271,21 @@
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                tooltip: { 
+                tooltip: {
+                    enabled: hasStatusData,
                     backgroundColor: '#5d3a2d',
+                    cornerRadius: 10,
                     padding: 12,
-                    titleFont: { size: 14, weight: '900' },
-                    cornerRadius: 10
+                    titleFont: { size: 14, weight: '900' }
                 }
             },
             scales: {
-                y: { 
-                    beginAtZero: true, 
+                y: {
+                    beginAtZero: true,
                     grid: { color: '#f5f0ed', drawBorder: false },
                     ticks: { color: '#a68a7a', font: { weight: '800' }, stepSize: 1 }
                 },
-                x: { 
+                x: {
                     grid: { display: false },
                     ticks: { color: '#5d3a2d', font: { weight: '800' } }
                 }

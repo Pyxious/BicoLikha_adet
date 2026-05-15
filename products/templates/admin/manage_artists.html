@@ -3,15 +3,32 @@
 {% block management_content %}
 <style>
     /* Clean Table Styling */
-    .table-container { background: white; border-radius: 12px; border: 1px solid #eee; overflow: hidden; }
-    
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #eee;
+        overflow: hidden;
+    }
+
     /* Fix for the Modal layout */
-    .modal-content { border-radius: 20px !important; border: none !important; box-shadow: 0 15px 50px rgba(0,0,0,0.2); }
-    .modal-header { border-bottom: 1px solid #f0f0f0; padding: 20px 30px; }
-    .modal-body { padding: 30px; }
-    
+    .modal-content {
+        border-radius: 20px !important;
+        border: none !important;
+        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+        border-bottom: 1px solid #f0f0f0;
+        padding: 20px 30px;
+    }
+
+    .modal-body {
+        padding: 30px;
+    }
+
     /* Ensure inputs are full size and visible */
-    .form-control, .form-select { 
+    .form-control,
+    .form-select {
         display: block;
         width: 100%;
         padding: 0.6rem 1rem;
@@ -21,17 +38,83 @@
         background-color: #fff;
         margin-bottom: 5px;
     }
-    .form-control:focus { border-color: #8d5e4a; box-shadow: none; }
-    
-    .field-label { font-weight: 700; color: #5d3a2d; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 5px; display: block; }
-    
-    .btn-save { background: #8d5e4a; color: white; border-radius: 25px; font-weight: bold; padding: 10px 40px; border: none; }
-    .btn-save:hover { opacity: 0.9; }
-    .artist-avatar-sm { width: 54px; height: 54px; border-radius: 16px; border: 2px solid #8d5e4a; background: #e9fcd9; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; color: #8d5e4a; }
-    .artist-avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
-    .artist-image-editor { display: flex; gap: 18px; align-items: center; padding: 16px; border: 1.5px dashed #d8c1b6; border-radius: 18px; background: #fffaf7; }
-    .artist-image-preview { width: 110px; height: 110px; border-radius: 24px; border: 2px solid #8d5e4a; background: #e9fcd9; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #8d5e4a; font-size: 2rem; flex-shrink: 0; }
-    .artist-image-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+    .form-control:focus {
+        border-color: #8d5e4a;
+        box-shadow: none;
+    }
+
+    .field-label {
+        font-weight: 700;
+        color: #5d3a2d;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+        display: block;
+    }
+
+    .btn-save {
+        background: #8d5e4a;
+        color: white;
+        border-radius: 25px;
+        font-weight: bold;
+        padding: 10px 40px;
+        border: none;
+    }
+
+    .btn-save:hover {
+        opacity: 0.9;
+    }
+
+    .artist-avatar-sm {
+        width: 54px;
+        height: 54px;
+        border-radius: 16px;
+        border: 2px solid #8d5e4a;
+        background: #e9fcd9;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #8d5e4a;
+    }
+
+    .artist-avatar-sm img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .artist-image-editor {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        padding: 16px;
+        border: 1.5px dashed #d8c1b6;
+        border-radius: 18px;
+        background: #fffaf7;
+    }
+
+    .artist-image-preview {
+        width: 110px;
+        height: 110px;
+        border-radius: 24px;
+        border: 2px solid #8d5e4a;
+        background: #e9fcd9;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #8d5e4a;
+        font-size: 2rem;
+        flex-shrink: 0;
+    }
+
+    .artist-image-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
 </style>
 
 <div class="mb-4">
@@ -40,11 +123,12 @@
 </div>
 
 {% if messages %}
-    {% for message in messages %}
-    <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-warning{% endif %} rounded-4 border-0 shadow-sm">
-        {{ message }}
-    </div>
-    {% endfor %}
+{% for message in messages %}
+<div
+    class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-warning{% endif %} rounded-4 border-0 shadow-sm">
+    {{ message }}
+</div>
+{% endfor %}
 {% endif %}
 
 <div class="table-container shadow-sm">
@@ -59,50 +143,51 @@
             </tr>
         </thead>
         <tbody>
-                {% for artist in artists %}
-                <tr>
-                    <td class="ps-4">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="artist-avatar-sm">
-                                {% if artist.artist_image_url %}
-                                    <img src="{{ artist.artist_image_url }}" alt="{{ artist.artist_name }}">
-                                {% else %}
-                                    <i class="fas fa-user"></i>
-                                {% endif %}
-                            </div>
-                            <div>
-                                <div class="fw-bold">{{ artist.artist_name }}</div>
-                                <div class="text-muted small">{{ artist.artist_email|default:"No email on file" }}</div>
-                            </div>
+            {% for artist in artists %}
+            <tr>
+                <td class="ps-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="artist-avatar-sm">
+                            {% if artist.artist_image_url %}
+                            <img src="{{ artist.artist_image_url }}" alt="{{ artist.artist_name }}">
+                            {% else %}
+                            <i class="fas fa-user"></i>
+                            {% endif %}
                         </div>
-                    </td>
-                    <td class="small">
-                        <div>{{ artist.artist_email|default:"-" }}</div>
-                        <div class="text-muted">{{ artist.artist_phone_num|default:"-" }}</div>
-                    </td>
-                    <td><span class="badge bg-secondary-subtle text-secondary px-3 py-2">{{ artist.artist_municipality }}</span></td>
-                    <td class="text-muted small">{{ artist.artist_zipcode }}</td>
-                    <td class="text-center">
-                        <div class="d-flex justify-content-center gap-2">
-                            <!-- EDIT BUTTON -->
-                            <button class="btn btn-sm btn-outline-dark rounded-pill px-3" 
-                                    data-bs-toggle="modal" data-bs-target="#editArtist{{ artist.artist_id }}">
-                                Edit
-                            </button>
+                        <div>
+                            <div class="fw-bold">{{ artist.artist_name }}</div>
+                            <div class="text-muted small">{{ artist.artist_email|default:"No email on file" }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="small">
+                    <div>{{ artist.artist_email|default:"-" }}</div>
+                    <div class="text-muted">{{ artist.artist_phone_num|default:"-" }}</div>
+                </td>
+                <td>
+                    {% if artist.artist_municipality %}
+                    <span class="badge bg-secondary-subtle text-secondary px-3 py-2">{{ artist.artist_municipality }}</span>
+                    {% else %}
+                    <span class="text-muted small">-</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted small">{{ artist.artist_zipcode|default:"-" }}</td>
+                <td class="text-center">
+                    <div class="d-flex justify-content-center gap-2">
+                        <!-- EDIT BUTTON -->
+                        <button class="btn btn-sm btn-outline-dark rounded-pill px-3" data-bs-toggle="modal"
+                            data-bs-target="#editArtist{{ artist.artist_id }}">
+                            Edit
+                        </button>
 
-                            <!-- UNPROMOTE BUTTON (REVOKE PRIVILEGES) -->
-                            <form method="POST">
-                                {% csrf_token %}
-                                <input type="hidden" name="artist_id" value="{{ artist.artist_id }}">
-                                <button type="submit" name="unpromote_artist" 
-                                        class="btn btn-sm btn-outline-danger rounded-pill px-3" 
-                                        onclick="return confirm('Are you sure you want to revoke artist privileges for {{ artist.artist_name }}? They will be moved back to the Users list.')">
-                                    Unpromote
-                                </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
+                        <!-- UNPROMOTE BUTTON (REVOKE PRIVILEGES) -->
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                            data-bs-toggle="modal" data-bs-target="#unpromoteArtist{{ artist.artist_id }}">
+                            Unpromote
+                        </button>
+                    </div>
+                </td>
+            </tr>
 
             <!-- THE MODAL (STRUCTURE FIXED) -->
             <div class="modal fade" id="editArtist{{ artist.artist_id }}" tabindex="-1" aria-hidden="true">
@@ -111,10 +196,11 @@
                         <form method="POST" enctype="multipart/form-data">
                             {% csrf_token %}
                             <input type="hidden" name="artist_id" value="{{ artist.artist_id }}">
-                            
+
                             <div class="modal-header">
                                 <h5 class="fw-bold mb-0">Update Artist Profile</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
                             </div>
 
                             <div class="modal-body">
@@ -122,16 +208,20 @@
                                     <div class="col-12">
                                         <label class="field-label">Artist Image</label>
                                         <div class="artist-image-editor">
-                                            <div class="artist-image-preview" id="artistImagePreview{{ artist.artist_id }}">
+                                            <div class="artist-image-preview"
+                                                id="artistImagePreview{{ artist.artist_id }}">
                                                 {% if artist.artist_image_url %}
-                                                    <img src="{{ artist.artist_image_url }}" alt="{{ artist.artist_name }}">
+                                                <img src="{{ artist.artist_image_url }}" alt="{{ artist.artist_name }}">
                                                 {% else %}
-                                                    <i class="fas fa-user"></i>
+                                                <i class="fas fa-user"></i>
                                                 {% endif %}
                                             </div>
                                             <div class="flex-grow-1">
-                                                <input type="file" name="artist_image" class="form-control" accept="image/*" onchange="previewArtistImage(this, '{{ artist.artist_id }}')">
-                                                <div class="text-muted small mt-2">Upload a new public artist photo. Leave blank to keep the current image.</div>
+                                                <input type="file" name="artist_image" class="form-control"
+                                                    accept="image/*"
+                                                    onchange="previewArtistImage(this, '{{ artist.artist_id }}')">
+                                                <div class="text-muted small mt-2">Upload a new public artist photo.
+                                                    Leave blank to keep the current image.</div>
                                             </div>
                                         </div>
                                     </div>
@@ -139,28 +229,35 @@
                                     <!-- Row 1 -->
                                     <div class="col-md-6">
                                         <label class="field-label">Artist Name</label>
-                                        <input type="text" name="artist_name" value="{{ artist.artist_name }}" class="form-control" required>
+                                        <input type="text" name="artist_name" value="{{ artist.artist_name }}"
+                                            class="form-control" required>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="field-label">Email</label>
-                                        <input type="email" name="artist_email" value="{{ artist.artist_email }}" class="form-control">
+                                        <input type="email" name="artist_email" value="{{ artist.artist_email }}"
+                                            class="form-control">
                                     </div>
                                     <div class="col-md-6">
                                         <label class="field-label">Contact Number</label>
-                                        <input type="text" name="artist_phone_num" value="{{ artist.artist_phone_num }}" class="form-control">
+                                        <input type="text" name="artist_phone_num" value="{{ artist.artist_phone_num }}"
+                                            class="form-control">
                                     </div>
 
                                     <!-- Row 2 -->
                                     <div class="col-12">
                                         <label class="field-label">Description</label>
-                                        <textarea name="artist_description" class="form-control" rows="3">{{ artist.artist_description }}</textarea>
+                                        <textarea name="artist_description" class="form-control"
+                                            rows="3">{{ artist.artist_description }}</textarea>
                                     </div>
 
                                     <!-- Row 3 (Location Picker) -->
                                     <div class="col-md-4">
                                         <label class="field-label">Municipality</label>
-                                        <select name="artist_municipality" class="form-select" onchange="updateLocation(this, '{{ artist.artist_id }}')">
-                                            <option value="{{ artist.artist_municipality }}" selected>{{ artist.artist_municipality }}</option>
+                                        <select name="artist_municipality" class="form-select"
+                                            onchange="updateLocation(this, '{{ artist.artist_id }}')">
+                                            <option value="{{ artist.artist_municipality|default_if_none:'' }}" selected>
+                                                {{ artist.artist_municipality|default:"Select Municipality" }}
+                                            </option>
                                             <option value="Legazpi">Legazpi</option>
                                             <option value="Daraga">Daraga</option>
                                             <option value="Tabaco">Tabaco</option>
@@ -170,21 +267,54 @@
                                     <div class="col-md-4">
                                         <label class="field-label">Barangay</label>
                                         <select name="artist_brgy" id="brgy{{ artist.artist_id }}" class="form-select">
-                                            <option value="{{ artist.artist_brgy }}" selected>{{ artist.artist_brgy }}</option>
+                                            <option value="{{ artist.artist_brgy }}" selected>{{ artist.artist_brgy }}
+                                            </option>
                                         </select>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="field-label">Zip Code</label>
-                                        <input type="text" name="artist_zipcode" id="zip{{ artist.artist_id }}" value="{{ artist.artist_zipcode }}" class="form-control bg-light" readonly>
+                                        <input type="text" name="artist_zipcode" id="zip{{ artist.artist_id }}"
+                                            value="{{ artist.artist_zipcode }}" class="form-control bg-light" readonly>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="modal-footer border-0 pt-0 pb-4 pe-4">
-                                <button type="button" class="btn btn-light rounded-pill px-4 border me-2" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-light rounded-pill px-4 border me-2"
+                                    data-bs-dismiss="modal">Cancel</button>
                                 <button type="submit" name="edit_artist" class="btn btn-save">Save Changes</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- UNPROMOTE MODAL -->
+            <div class="modal fade" id="unpromoteArtist{{ artist.artist_id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content text-center py-4 px-3">
+                        <div class="modal-body">
+                            <div class="mb-4">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-danger-subtle text-danger rounded-circle"
+                                    style="width: 80px; height: 80px; font-size: 2.5rem;">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                            </div>
+                            <h4 class="fw-bold mb-3" style="color: var(--text-brown);">Revoke Artist Privileges?</h4>
+                            <p class="text-muted mb-4">Are you sure you want to unpromote <strong>{{ artist.artist_name
+                                    }}</strong>? They will lose artist access and be moved back to the regular Users
+                                list.</p>
+                            <div class="d-flex justify-content-center gap-3">
+                                <button type="button" class="btn btn-light rounded-pill px-4 border"
+                                    data-bs-dismiss="modal">Cancel</button>
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="artist_id" value="{{ artist.artist_id }}">
+                                    <button type="submit" name="unpromote_artist"
+                                        class="btn btn-danger rounded-pill px-4 fw-bold">Yes, Unpromote</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -210,10 +340,10 @@
         if (locations[municipality]) {
             // Update Zip
             zipField.value = locations[municipality].zip;
-            
+
             // Clear and refill Barangays
             brgyDropdown.innerHTML = "";
-            locations[municipality].brgy.forEach(function(b) {
+            locations[municipality].brgy.forEach(function (b) {
                 let option = document.createElement('option');
                 option.value = b;
                 option.text = b;
@@ -225,7 +355,7 @@
     function previewArtistImage(input, artistId) {
         if (!input.files || !input.files[0]) return;
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             const preview = document.getElementById('artistImagePreview' + artistId);
             if (preview) {
                 preview.innerHTML = '<img src="' + e.target.result + '" alt="Artist image preview">';
