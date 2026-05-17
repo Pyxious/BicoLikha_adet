@@ -236,6 +236,7 @@ class OrderDetail(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, db_column='PRICE', null=True)
     quantity = models.IntegerField(db_column='QUANTITY', null=True)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, db_column='SUBTOTAL', null=True)
+    item_status = models.CharField(max_length=50, db_column='ITEM_STATUS', default='Pending')
 
     class Meta: 
         db_table = 'order_details'

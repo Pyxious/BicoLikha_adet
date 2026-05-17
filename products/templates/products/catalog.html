@@ -53,6 +53,48 @@
     }
     .breadcrumb-active { color: #8d5e4a; }
 
+    .popular-pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        margin-top: 48px;
+        margin-bottom: 20px;
+    }
+    .popular-page-link,
+    .popular-page-current {
+        min-width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 0.9rem;
+    }
+    .popular-page-link {
+        border: 1.5px solid #d8c1b6;
+        color: #8d5e4a;
+        background: #fff;
+        transition: 0.2s ease;
+    }
+    .popular-page-link:hover {
+        background: #f8f1eb;
+        border-color: #8d5e4a;
+    }
+    .popular-page-current {
+        background: #8d5e4a;
+        color: #fff;
+        box-shadow: 0 10px 20px rgba(141, 94, 74, 0.16);
+    }
+    .popular-page-dots {
+        color: #bbb;
+        font-weight: 700;
+        font-size: 1.1rem;
+        padding: 0 4px;
+    }
+
     @media (max-width: 1199px) { .catalog-grid { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 768px) { .catalog-grid { grid-template-columns: repeat(2, 1fr); } }
 </style>
@@ -67,18 +109,34 @@
         </div>
         
         <div class="catalog-tools">
-            <!-- NEW CATEGORIES BUTTON -->
-            <a href="{% url 'categories_overview' %}" class="catalog-btn btn-cat-link shadow-sm">Categories</a>
-            
-            <!-- SORTING FORM -->
-            <form method="GET" class="d-flex gap-2">
-                <select name="sort" class="catalog-select">
+            <!-- SORTING AND FILTERING FORM -->
+            <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+                <!-- Checklist Dropdown -->
+                <div class="dropdown">
+                    <button class="catalog-select dropdown-toggle d-flex justify-content-between align-items-center shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside" style="min-width: 200px;">
+                        <span>Categories</span>
+                    </button>
+                    <ul class="dropdown-menu p-3 shadow" style="min-width: 220px; max-height: 300px; overflow-y: auto; border-radius: 16px; border: 1.5px solid #d8c1b6;">
+                        {% for category in categories %}
+                        <li>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="category" value="{{ category.category_id }}" id="cat_{{ category.category_id }}" {% if category.category_id|stringformat:'s' in selected_categories %}checked{% endif %}>
+                                <label class="form-check-label" for="cat_{{ category.category_id }}" style="font-size: 0.9rem; font-weight: 600; color: #5d3a2d;">
+                                    {{ category.category_name }}
+                                </label>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <select name="sort" class="catalog-select shadow-sm">
                     <option value="latest" {% if current_sort == 'latest' %}selected{% endif %}>Latest</option>
                     <option value="price_low" {% if current_sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
                     <option value="price_high" {% if current_sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
                     <option value="title_asc" {% if current_sort == 'title_asc' %}selected{% endif %}>Name: A to Z</option>
                 </select>
-                <button type="submit" class="catalog-btn shadow-sm">Sort</button>
+                <button type="submit" class="catalog-btn shadow-sm">Apply</button>
             </form>
         </div>
     </div>
@@ -111,6 +169,36 @@
         <div class="text-center py-5 w-100"><p class="text-muted">No products found.</p></div>
         {% endfor %}
     </div>
+
+    <!-- PAGINATION -->
+    {% if page_obj and page_obj.paginator.num_pages > 1 %}
+    <div class="popular-pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% for cat in selected_categories %}&category={{ cat }}{% endfor %}&sort={{ current_sort }}" class="popular-page-link" aria-label="Previous page">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+        {% endif %}
+
+        {% for page_num in page_obj.paginator.page_range %}
+            {% if page_num == page_obj.number %}
+                <span class="popular-page-current">{{ page_num }}</span>
+            {% elif page_num >= page_obj.number|add:'-2' and page_num <= page_obj.number|add:'2' %}
+                <a href="?page={{ page_num }}{% for cat in selected_categories %}&category={{ cat }}{% endfor %}&sort={{ current_sort }}" class="popular-page-link">{{ page_num }}</a>
+            {% elif page_num == 1 or page_num == page_obj.paginator.num_pages %}
+                <a href="?page={{ page_num }}{% for cat in selected_categories %}&category={{ cat }}{% endfor %}&sort={{ current_sort }}" class="popular-page-link">{{ page_num }}</a>
+            {% elif page_num == page_obj.number|add:'-3' or page_num == page_obj.number|add:'3' %}
+                <span class="popular-page-dots">...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% for cat in selected_categories %}&category={{ cat }}{% endfor %}&sort={{ current_sort }}" class="popular-page-link" aria-label="Next page">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
 </div>
 
 </div>

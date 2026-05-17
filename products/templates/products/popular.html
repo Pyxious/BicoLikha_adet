@@ -1,23 +1,96 @@
 {% extends 'products/base.html' %}
 {% block content %}
 <style>
-    .popular-title { color: #5d3a2d; font-weight: 800; font-size: 2.5rem; text-transform: lowercase; margin-bottom: 5px; }
-    .trending-badge { background: #ffc107; color: #000; font-size: 0.65rem; font-weight: 800; padding: 3px 10px; border-radius: 5px; position: absolute; top: 10px; left: 10px; }
+    .popular-title {
+        color: #5d3a2d;
+        font-weight: 800;
+        font-size: 2.5rem;
+        text-transform: lowercase;
+        margin-bottom: 5px;
+    }
 
-    .art-card { text-decoration: none; color: inherit; display: block; transition: 0.3s; }
-    .art-card:hover { transform: translateY(-8px); }
+    .trending-badge {
+        background: #ffc107;
+        color: #000;
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 3px 10px;
+        border-radius: 5px;
+        position: absolute;
+        top: 10px;
+        left: 10px;
+    }
 
-    .img-box { background: #e6e6e6; aspect-ratio: 1/1; border-radius: 15px; overflow: hidden; position: relative; border: 2px solid transparent; transition: 0.3s; }
-    .art-card:hover .img-box { border-color: #8d5e4a; }
-    .img-box img { width: 100%; height: 100%; object-fit: cover; }
+    .art-card {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        transition: 0.3s;
+    }
 
-    .dashed-line { border-top: 3px dashed #8d5e4a; margin: 40px 0; opacity: 0.4; }
-    .popular-meta { margin-top: 14px; text-align: center; }
-    .popular-title-text { color: #5d3a2d; font-weight: 800; }
-    .popular-price { color: #8d5e4a; font-weight: 900; margin-top: 4px; }
-    .popular-stock { color: #8f7a72; font-size: 0.82rem; font-weight: 700; margin-top: 4px; }
-    .popular-stock.out { color: #b3634d; }
-    .popular-artist { color: #9a8b83; font-size: 0.82rem; margin-top: 6px; }
+    .art-card:hover {
+        transform: translateY(-8px);
+    }
+
+    .img-box {
+        background: #e6e6e6;
+        aspect-ratio: 1/1;
+        border-radius: 15px;
+        overflow: hidden;
+        position: relative;
+        border: 2px solid transparent;
+        transition: 0.3s;
+    }
+
+    .art-card:hover .img-box {
+        border-color: #8d5e4a;
+    }
+
+    .img-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .dashed-line {
+        border-top: 3px dashed #8d5e4a;
+        margin: 40px 0;
+        opacity: 0.4;
+    }
+
+    .popular-meta {
+        margin-top: 14px;
+        text-align: center;
+    }
+
+    .popular-title-text {
+        color: #5d3a2d;
+        font-weight: 800;
+    }
+
+    .popular-price {
+        color: #8d5e4a;
+        font-weight: 900;
+        margin-top: 4px;
+    }
+
+    .popular-stock {
+        color: #8f7a72;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+
+    .popular-stock.out {
+        color: #b3634d;
+    }
+
+    .popular-artist {
+        color: #9a8b83;
+        font-size: 0.82rem;
+        margin-top: 6px;
+    }
+
     .popular-toolbar {
         display: flex;
         justify-content: space-between;
@@ -26,12 +99,14 @@
         flex-wrap: wrap;
         margin-bottom: 24px;
     }
+
     .popular-filter-form {
         display: flex;
         align-items: center;
         gap: 10px;
         flex-wrap: wrap;
     }
+
     .popular-select {
         min-width: 210px;
         border: 1.5px solid #d8c1b6;
@@ -43,6 +118,7 @@
         background: #fff;
         outline: none;
     }
+
     .popular-filter-btn,
     .popular-clear-link {
         display: inline-flex;
@@ -55,16 +131,19 @@
         font-weight: 800;
         text-decoration: none;
     }
+
     .popular-filter-btn {
         border: none;
         background: #8d5e4a;
         color: #fff;
     }
+
     .popular-clear-link {
         border: 1.5px solid #d8c1b6;
         color: #8d5e4a;
         background: #fff;
     }
+
     .popular-pagination {
         display: flex;
         justify-content: center;
@@ -72,6 +151,7 @@
         gap: 12px;
         margin-top: 36px;
     }
+
     .popular-page-link,
     .popular-page-current {
         min-width: 44px;
@@ -84,36 +164,43 @@
         font-weight: 800;
         font-size: 0.9rem;
     }
+
     .popular-page-link {
         border: 1.5px solid #d8c1b6;
         color: #8d5e4a;
         background: #fff;
         transition: 0.2s ease;
     }
+
     .popular-page-link:hover {
         background: #f8f1eb;
         border-color: #8d5e4a;
     }
+
     .popular-page-current {
         background: #8d5e4a;
         color: #fff;
         box-shadow: 0 10px 20px rgba(141, 94, 74, 0.16);
     }
+
     .popular-page-dots {
         color: #9a8b83;
         font-weight: 800;
         letter-spacing: 0.15em;
     }
+
     .popular-ad-section {
         background: #e9fcd9;
         min-height: 330px;
         position: relative;
         overflow: hidden;
     }
+
     .popular-ad-carousel {
         position: relative;
         min-height: 600px;
     }
+
     .popular-ad-slide {
         position: absolute;
         inset: 0;
@@ -121,10 +208,12 @@
         pointer-events: none;
         transition: opacity 0.45s ease;
     }
+
     .popular-ad-slide.active {
         opacity: 1;
         pointer-events: auto;
     }
+
     .popular-ad-slide img {
         width: 100%;
         height: 100%;
@@ -132,6 +221,7 @@
         object-fit: cover;
         display: block;
     }
+
     .popular-ad-placeholder {
         min-height: 330px;
         display: flex;
@@ -139,6 +229,7 @@
         justify-content: center;
         color: rgba(93, 58, 45, 0.34);
     }
+
     .popular-ad-nav {
         position: absolute;
         top: 50%;
@@ -155,11 +246,19 @@
         z-index: 2;
         transition: 0.2s ease;
     }
+
     .popular-ad-nav:hover {
         color: rgba(93, 58, 45, 0.74);
     }
-    .popular-ad-prev { left: 42px; }
-    .popular-ad-next { right: 42px; }
+
+    .popular-ad-prev {
+        left: 42px;
+    }
+
+    .popular-ad-next {
+        right: 42px;
+    }
+
     .popular-ad-dots {
         position: absolute;
         left: 0;
@@ -170,6 +269,7 @@
         gap: 6px;
         z-index: 2;
     }
+
     .popular-ad-dot {
         width: 7px;
         height: 7px;
@@ -178,18 +278,28 @@
         padding: 0;
         background: rgba(93, 58, 45, 0.18);
     }
+
     .popular-ad-dot.active {
         background: #8d5e4a;
     }
+
     @media (max-width: 767px) {
+
         .popular-ad-section,
         .popular-ad-carousel,
         .popular-ad-placeholder,
         .popular-ad-slide img {
             min-height: 230px;
         }
-        .popular-ad-prev { left: 12px; }
-        .popular-ad-next { right: 12px; }
+
+        .popular-ad-prev {
+            left: 12px;
+        }
+
+        .popular-ad-next {
+            right: 12px;
+        }
+
         .popular-ad-nav {
             width: 44px;
             height: 44px;
@@ -216,7 +326,8 @@
         </button>
         <div class="popular-ad-dots">
             {% for ad in popular_ads %}
-            <button type="button" class="popular-ad-dot {% if forloop.first %}active{% endif %}" data-popular-ad-dot aria-label="Show ad {{ forloop.counter }}"></button>
+            <button type="button" class="popular-ad-dot {% if forloop.first %}active{% endif %}" data-popular-ad-dot
+                aria-label="Show ad {{ forloop.counter }}"></button>
             {% endfor %}
         </div>
         {% endif %}
@@ -231,32 +342,47 @@
 <div class="container mt-5 mb-5">
     <div class="popular-toolbar">
         <div class="text-muted small">
-            {% if selected_category %}
-                Showing popular items in the selected category.
+            {% if selected_categories %}
+            Showing popular items in the selected category.
             {% else %}
-                Showing popular items from all categories.
+            Showing popular items from all categories.
             {% endif %}
         </div>
         <div class="popular-filter-form">
             <form method="GET" class="popular-filter-form">
-                <select name="category" class="popular-select">
-                    <option value="">All Categories</option>
-                    {% for category in categories %}
-                    <option value="{{ category.category_id }}" {% if selected_category == category.category_id|stringformat:'s' %}selected{% endif %}>
-                        {{ category.category_name }}
-                    </option>
-                    {% endfor %}
-                </select>
+                <div class="dropdown">
+                    <button
+                        class="popular-select dropdown-toggle d-flex justify-content-between align-items-center shadow-sm"
+                        type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside"
+                        style="min-width: 200px;">
+                        <span>All Categories</span>
+                    </button>
+                    <ul class="dropdown-menu p-3 shadow"
+                        style="min-width: 220px; max-height: 300px; overflow-y: auto; border-radius: 16px; border: 1.5px solid #d8c1b6;">
+                        {% for category in categories %}
+                        <li>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="category"
+                                    value="{{ category.category_id }}" id="pop_cat_{{ category.category_id }}" {% if category.category_id|stringformat:'s' in selected_categories %}checked{% endif %}>
+                                <label class="form-check-label" for="pop_cat_{{ category.category_id }}"
+                                    style="font-size: 0.9rem; font-weight: 600; color: #5d3a2d;">
+                                    {{ category.category_name }}
+                                </label>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
                 <button type="submit" class="popular-filter-btn">Apply</button>
             </form>
-            {% if selected_category %}
-                <a href="{% url 'popular' %}" class="popular-clear-link">Clear</a>
+            {% if selected_categories %}
+            <a href="{% url 'popular' %}" class="popular-clear-link">Clear</a>
             {% endif %}
         </div>
     </div>
     <hr class="dashed-line">
 
-    
+
 
     <div class="row g-4">
         {% for artwork in artworks %}
@@ -266,9 +392,10 @@
                     <span class="trending-badge"><i class="fas fa-fire me-1"></i> TRENDING</span>
 
                     {% if artwork.image %}
-                        <img src="{{ artwork.image.url }}" alt="{{ artwork.title }}">
+                    <img src="{{ artwork.image.url }}" alt="{{ artwork.title }}">
                     {% else %}
-                        <div class="h-100 d-flex align-items-center justify-content-center text-muted opacity-50"><i class="fas fa-palette fa-3x"></i></div>
+                    <div class="h-100 d-flex align-items-center justify-content-center text-muted opacity-50"><i
+                            class="fas fa-palette fa-3x"></i></div>
                     {% endif %}
                 </div>
                 <div class="popular-meta">
@@ -276,9 +403,9 @@
                     <div class="popular-price">&#8369;{{ artwork.price|floatformat:0 }}</div>
                     <div class="popular-stock {% if artwork.stock_qty|default:0 <= 0 %}out{% endif %}">
                         {% if artwork.stock_qty|default:0 > 0 %}
-                            Stock: {{ artwork.stock_qty }}
+                        Stock: {{ artwork.stock_qty }}
                         {% else %}
-                            Out of stock
+                        Out of stock
                         {% endif %}
                     </div>
                     <div class="popular-artist">by {{ artwork.artist.artist_name }}</div>
@@ -295,34 +422,38 @@
     {% if page_obj and page_obj.paginator.num_pages > 1 %}
     <div class="popular-pagination">
         {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}" class="popular-page-link" aria-label="Previous page">
-                <i class="fas fa-chevron-left"></i>
-            </a>
+        <a href="?page={{ page_obj.previous_page_number }}{% for cat in selected_categories %}&category={{ cat }}{% endfor %}"
+            class="popular-page-link" aria-label="Previous page">
+            <i class="fas fa-chevron-left"></i>
+        </a>
         {% endif %}
 
         {% for page_num in page_obj.paginator.page_range %}
-            {% if page_num == page_obj.number %}
-                <span class="popular-page-current">{{ page_num }}</span>
-            {% elif page_num >= page_obj.number|add:'-2' and page_num <= page_obj.number|add:'2' %}
-                <a href="?page={{ page_num }}{% if selected_category %}&category={{ selected_category }}{% endif %}" class="popular-page-link">{{ page_num }}</a>
+        {% if page_num == page_obj.number %}
+        <span class="popular-page-current">{{ page_num }}</span>
+        {% elif page_num >= page_obj.number|add:'-2' and page_num <= page_obj.number|add:'2' %} <a
+            href="?page={{ page_num }}{% for cat in selected_categories %}&category={{ cat }}{% endfor %}"
+            class="popular-page-link">{{ page_num }}</a>
             {% elif page_num == 1 or page_num == page_obj.paginator.num_pages %}
-                <a href="?page={{ page_num }}{% if selected_category %}&category={{ selected_category }}{% endif %}" class="popular-page-link">{{ page_num }}</a>
+            <a href="?page={{ page_num }}{% for cat in selected_categories %}&category={{ cat }}{% endfor %}"
+                class="popular-page-link">{{ page_num }}</a>
             {% elif page_num == page_obj.number|add:'-3' or page_num == page_obj.number|add:'3' %}
-                <span class="popular-page-dots">...</span>
+            <span class="popular-page-dots">...</span>
             {% endif %}
-        {% endfor %}
+            {% endfor %}
 
-        {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}" class="popular-page-link" aria-label="Next page">
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% for cat in selected_categories %}&category={{ cat }}{% endfor %}"
+                class="popular-page-link" aria-label="Next page">
                 <i class="fas fa-chevron-right"></i>
             </a>
-        {% endif %}
+            {% endif %}
     </div>
     {% endif %}
 </div>
 
 <script>
-    (function() {
+    (function () {
         const carousel = document.querySelector('[data-popular-ad-carousel]');
         if (!carousel) return;
 
@@ -341,7 +472,7 @@
 
         function startLoop() {
             window.clearInterval(timer);
-            timer = window.setInterval(function() {
+            timer = window.setInterval(function () {
                 showSlide(current + 1);
             }, 4500);
         }
@@ -350,19 +481,19 @@
         const next = carousel.querySelector('[data-popular-ad-next]');
 
         if (prev) {
-            prev.addEventListener('click', function() {
+            prev.addEventListener('click', function () {
                 showSlide(current - 1);
                 startLoop();
             });
         }
         if (next) {
-            next.addEventListener('click', function() {
+            next.addEventListener('click', function () {
                 showSlide(current + 1);
                 startLoop();
             });
         }
-        dots.forEach(function(dot, index) {
-            dot.addEventListener('click', function() {
+        dots.forEach(function (dot, index) {
+            dot.addEventListener('click', function () {
                 showSlide(index);
                 startLoop();
             });

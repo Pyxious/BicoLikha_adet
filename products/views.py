@@ -642,21 +642,84 @@ def artist_application(request):
     if request.user.is_authenticated and request.user.is_staff:
         return redirect('admin_dashboard')
 
-    if request.method == 'POST':
-        try:
-            with transaction.atomic():
-                artist_name = (request.POST.get('artist_name') or '').strip()
-                application = _create_artist_application_from_post(request, artist_name)
+    submitted_data = None  # Will hold POST data to repopulate the form on error
 
-            _send_application_email(
-                application,
-                "Bicolikha Artist Application Received",
-                f"Your artist application for {application.artist_name} has been received and is pending admin review."
-            )
-            messages.success(request, "Your artist application has been submitted and is waiting for admin review.")
-            return redirect('artist_application')
-        except ValueError as exc:
-            messages.error(request, str(exc))
+    if request.method == 'POST':
+        # --- Run duplicate checks BEFORE the transaction so a failure
+        #     doesn't roll back the user's entered product data ---
+        artist_name = (request.POST.get('artist_name') or '').strip()
+        applicant_email = (request.POST.get('applicant_email') or '').strip().lower()
+        if request.user.is_authenticated:
+            applicant_email = applicant_email or request.user.email
+        applicant_phone = re.sub(r'\D', '', request.POST.get('applicant_phone') or '')
+        if request.user.is_authenticated:
+            applicant_phone = applicant_phone or getattr(request.user, 'phone_number', '') or ''
+
+        duplicate_error = None
+        active_statuses = ['Pending', 'Approved']
+
+        if artist_name:
+            if Artist.objects.filter(artist_name__iexact=artist_name).exists():
+                duplicate_error = f"An artist named \"{artist_name}\" is already registered. Please use a different artist name."
+            elif ArtistApplication.objects.filter(artist_name__iexact=artist_name, application_status__in=active_statuses).exists():
+                duplicate_error = f"An application for the artist name \"{artist_name}\" has already been submitted and is pending review."
+
+        if not duplicate_error and applicant_email:
+            if Artist.objects.filter(artist_email__iexact=applicant_email).exists():
+                duplicate_error = f"The email \"{applicant_email}\" is already associated with a registered artist."
+            elif ArtistApplication.objects.filter(applicant_email__iexact=applicant_email, application_status__in=active_statuses).exists():
+                duplicate_error = f"An application using the email \"{applicant_email}\" has already been submitted and is pending review."
+
+        if not duplicate_error and applicant_phone:
+            if Artist.objects.filter(artist_phone_num=applicant_phone).exists():
+                duplicate_error = f"The phone number provided is already associated with a registered artist."
+            elif ArtistApplication.objects.filter(applicant_phone=applicant_phone, application_status__in=active_statuses).exists():
+                duplicate_error = f"An application using this phone number has already been submitted and is pending review."
+
+        if duplicate_error:
+            messages.error(request, duplicate_error)
+            submitted_data = request.POST  # pass back so template can repopulate
+        else:
+            try:
+                with transaction.atomic():
+                    application = _create_artist_application_from_post(request, artist_name)
+
+                _send_application_email(
+                    application,
+                    "Bicolikha Artist Application Received",
+                    f"Your artist application for {application.artist_name} has been received and is pending admin review."
+                )
+                messages.success(request, "Your artist application has been submitted and is waiting for admin review.")
+                return redirect('artist_application')
+            except ValueError as exc:
+                messages.error(request, str(exc))
+                submitted_data = request.POST  # pass back so template can repopulate
+
+    # Build submitted_products for JS restore
+    import json as _json
+    submitted_products = []
+    submitted_products_json = '[]'
+    if submitted_data:
+        product_keys = [k for k in submitted_data.getlist('product_key') if k.strip()]
+        categories_map = {
+            str(cat.category_id): cat.category_name
+            for cat in Category.objects.all()
+        }
+        for key in product_keys:
+            cat_id = submitted_data.get(f'category_id_{key}', '')
+            submitted_products.append({
+                'name':        submitted_data.get(f'prod_name_{key}', ''),
+                'price':       submitted_data.get(f'prod_price_{key}', ''),
+                'stock':       submitted_data.get(f'prod_stock_qty_{key}', ''),
+                'cat_id':      cat_id,
+                'cat_name':    categories_map.get(cat_id, ''),
+                'new_cat':     submitted_data.get(f'new_category_{key}', ''),
+                'description': submitted_data.get(f'prod_description_{key}', ''),
+                'img_data':    submitted_data.get(f'prod_image_data_{key}', ''),
+                'img_filename': submitted_data.get(f'prod_image_filename_{key}', ''),
+            })
+        submitted_products_json = _json.dumps(submitted_products)
+
 
     initial_name = ''
     initial_email = ''
@@ -683,6 +746,9 @@ def artist_application(request):
         'initial_municipality': initial_municipality,
         'initial_brgy': initial_brgy,
         'initial_zipcode': initial_zipcode,
+        'submitted': submitted_data,
+        'submitted_products': submitted_products,
+        'submitted_products_json': submitted_products_json,
     })
 
 # --- 2. ADMINISTRATIVE / MANAGEMENT HUB ---
@@ -1010,25 +1076,6 @@ def admin_products(request):
             messages.success(request, "Popular page ad photo removed.")
             return redirect('admin_products')
 
-        if 'approve_stock_adjustment' in request.POST or 'reject_stock_adjustment' in request.POST:
-            stock_request = get_object_or_404(
-                ArtistStockAdjustmentRequest.objects.select_related('artist', 'product'),
-                request_id=request.POST.get('stock_request_id')
-            )
-
-            try:
-                if 'approve_stock_adjustment' in request.POST:
-                    _approve_stock_adjustment_request(stock_request)
-                    _log_audit(request, f"Approved {stock_request.adjustment_type.lower()} stock request for {stock_request.product.title}")
-                    messages.success(request, f"Approved {stock_request.adjustment_type.lower()} stock request for {stock_request.product.title}.")
-                else:
-                    _reject_stock_adjustment_request(stock_request)
-                    _log_audit(request, f"Rejected stock request for {stock_request.product.title}")
-                    messages.success(request, f"Rejected stock request for {stock_request.product.title}.")
-            except ValueError as exc:
-                messages.error(request, str(exc))
-            return redirect('admin_products')
-
         if 'approve_artist_application' in request.POST or 'reject_artist_application' in request.POST:
             application = get_object_or_404(
                 ArtistApplication.objects.select_related('user'),
@@ -1203,9 +1250,6 @@ def admin_products(request):
         ).count()
         for status in ['Pending', 'Approved', 'Rejected']
     }
-    pending_stock_adjustments = ArtistStockAdjustmentRequest.objects.filter(
-        status='Pending'
-    ).select_related('artist', 'product', 'product__category').order_by('-date_submitted')
 
     today = timezone.localdate()
     sales_days = [today - timedelta(days=offset) for offset in range(6, -1, -1)]
@@ -1271,20 +1315,26 @@ def admin_orders(request):
     
     if request.method == 'POST' and 'update_status' in request.POST:
         order = get_object_or_404(Order, order_id=request.POST.get('order_id'))
-        new_status = request.POST.get('status')
-        order.status = new_status
-
+        
         order_items = OrderDetail.objects.filter(order=order).select_related('product', 'product__artist')
-        artists = []
-        seen_artist_ids = set()
+        
+        # Loop through items and update per-artist status
+        artist_statuses_updated = {} # keep track to send notifications
         for item in order_items:
             artist = item.product.artist
-            if artist and artist.artist_id not in seen_artist_ids:
-                seen_artist_ids.add(artist.artist_id)
-                artists.append(artist)
-
-        for artist in artists:
-            message_text = f"Admin updated Order #BK-{order.order_id} to {new_status}."
+            artist_id = str(artist.artist_id) if artist else '0'
+            
+            # The template will have select inputs named 'artist_status_<artist_id>'
+            artist_new_status = request.POST.get(f'artist_status_{artist_id}')
+            if artist_new_status and item.item_status != artist_new_status:
+                item.item_status = artist_new_status
+                item.save()
+                if artist:
+                    artist_statuses_updated[artist] = artist_new_status
+        
+        # Notify artists who had a status change
+        for artist, new_status in artist_statuses_updated.items():
+            message_text = f"Admin updated your items in Order #BK-{order.order_id} to {new_status}."
             Notification.objects.create(
                 order=order,
                 artist=artist,
@@ -1299,29 +1349,46 @@ def admin_orders(request):
                 message_text
             )
 
+        # Calculate overall order status based on item statuses
+        item_statuses = [item.item_status for item in order_items]
+        
+        if all(s == 'Cancelled' for s in item_statuses):
+            new_order_status = 'Cancelled'
+        else:
+            # Check from lowest/earliest status to highest
+            active_statuses = [s for s in item_statuses if s != 'Cancelled']
+            if any(s == 'To Pay' for s in active_statuses):
+                new_order_status = 'To Pay'
+            elif any(s == 'Processing' for s in active_statuses):
+                new_order_status = 'Processing'
+            elif any(s == 'Prepared' for s in active_statuses):
+                new_order_status = 'Prepared'
+            elif any(s == 'Shipped' for s in active_statuses):
+                new_order_status = 'Shipped'
+            else:
+                new_order_status = 'Delivered'
+            
+        order.status = new_order_status
+
         # --- SYNC TO SHIPMENT TABLE ---
         if order.shipment:
-            if new_status == 'Prepared':
+            if new_order_status == 'Prepared':
                 order.shipment.shipment_status = 'Prepared'
-            elif new_status == 'Shipped':
+            elif new_order_status == 'Shipped':
                 order.shipment.shipment_status = 'In Transit'
-                order.shipment.shipment_date = timezone.now().date() # Sets the date
-            elif new_status == 'Delivered':
-                # Update Shipment
-                if order.shipment:
-                    order.shipment.shipment_status = 'Arrived'
-                    order.shipment.save()
-                
-                # Update Payment (THE FIX)
+                order.shipment.shipment_date = timezone.now().date()
+            elif new_order_status == 'Delivered':
+                order.shipment.shipment_status = 'Arrived'
+                order.shipment.save()
                 if order.payment:
                     order.payment.status = 'Paid'
                     order.payment.save()
-            elif new_status == 'Cancelled':
+            elif new_order_status == 'Cancelled':
                 order.shipment.shipment_status = 'Cancelled'
             order.shipment.save()
 
         order.save()
-        _log_audit(request, f"Updated order #BK-{order.order_id} status to {new_status}")
+        _log_audit(request, f"Updated order #BK-{order.order_id} artist statuses, overall status: {new_order_status}")
         return redirect('admin_orders')
     
     # Pre-fetch logic for display...
@@ -1332,14 +1399,24 @@ def admin_orders(request):
             Address.objects.filter(user=o.user, is_default=True).first() or
             Address.objects.filter(user=o.user).order_by('-address_id').first()
         )
-        artist_names = []
-        seen_artist_ids = set()
+        
+        # Group items by artist
+        artists_data = {}
         for item in o.items:
             artist = item.product.artist
-            if artist and artist.artist_id not in seen_artist_ids:
-                seen_artist_ids.add(artist.artist_id)
-                artist_names.append(artist.artist_name)
-        o.artist_names = artist_names
+            artist_id = artist.artist_id if artist else 0
+            if artist_id not in artists_data:
+                artists_data[artist_id] = {
+                    'artist_id': artist_id,
+                    'artist': artist,
+                    'artist_name': artist.artist_name if artist else 'Unassigned',
+                    'status': item.item_status, # We take the first item's status to initialize the dropdown
+                    'items': []
+                }
+            artists_data[artist_id]['items'].append(item)
+            
+        o.artists_grouped = list(artists_data.values())
+        o.artist_names = [data['artist_name'] for data in o.artists_grouped]
         o.item_count = o.items.count()
 
     return render(request, 'admin/admin_orders.html', {
@@ -1837,12 +1914,16 @@ def catalog(request):
     if request.user.is_authenticated and request.user.is_staff: return redirect('admin_dashboard')
     categories = Category.objects.filter(artwork__isnull=False).distinct().order_by('category_name')
     current_sort = request.GET.get('sort', 'latest')
+    selected_categories = request.GET.getlist('category')
     stock_order = Case(
         When(stock_qty__gt=0, then=Value(0)),
         default=Value(1),
         output_field=IntegerField()
     )
     artworks = Artwork.objects.select_related('artist', 'category').annotate(stock_order=stock_order)
+
+    if selected_categories:
+        artworks = artworks.filter(category_id__in=selected_categories)
 
     sort_map = {
         'latest': ['stock_order', '-prod_id'],
@@ -1855,10 +1936,15 @@ def catalog(request):
     }
     artworks = artworks.order_by(*sort_map.get(current_sort, sort_map['latest']))
 
+    paginator = Paginator(artworks, 12)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
     return render(request, 'products/catalog.html', {
-        'artworks': artworks,
+        'artworks': page_obj.object_list,
+        'page_obj': page_obj,
         'categories': categories,
         'current_sort': current_sort,
+        'selected_categories': selected_categories,
     })
 
 
@@ -1926,15 +2012,15 @@ def about(request):
     return render(request, 'products/about.html')
 
 def popular(request):
-    selected_category = request.GET.get('category', '')
+    selected_categories = request.GET.getlist('category')
     categories = Category.objects.filter(artwork__isnull=False).distinct().order_by('category_name')
 
     trending = Artwork.objects.select_related('category').annotate(
         sold_count=Sum('orderdetail__quantity')
     ).order_by('-sold_count', '-prod_id')
 
-    if selected_category:
-        trending = trending.filter(category_id=selected_category)
+    if selected_categories:
+        trending = trending.filter(category_id__in=selected_categories)
 
     paginator = Paginator(trending, 12)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -1942,7 +2028,7 @@ def popular(request):
         'artworks': page_obj.object_list,
         'page_obj': page_obj,
         'categories': categories,
-        'selected_category': selected_category,
+        'selected_categories': selected_categories,
         'popular_ads': PopularAd.objects.filter(is_active=True),
     })
 
@@ -2035,22 +2121,14 @@ def _build_order_artist_groups(order, reviewed_products):
         status_notif = artist_status_map.get(artist_id)
         current_artist_status = status_notif.status_update if status_notif else None
 
-        if order.status == 'Delivered':
-            display_status = 'Delivered'
-        elif order.status == 'Cancelled':
-            display_status = 'Cancelled'
-        elif order.status == 'Shipped':
-            display_status = 'Shipped'
-        elif order.status == 'Prepared':
-            display_status = 'Prepared'
-        else:
-            display_status = 'Processing'
+        # Use the actual item status for this artist group
+        display_status = items[0].item_status if items else 'Processing'
 
         first_unrated_item = next(
             (item for item in items if item.product.prod_id not in reviewed_products),
             None
         )
-        has_unrated_items = order.status == 'Delivered' and first_unrated_item is not None
+        has_unrated_items = display_status == 'Delivered' and first_unrated_item is not None
 
         artist_groups.append({
             'artist': group['artist'],
@@ -2657,7 +2735,7 @@ def artist_detail(request, artist_id):
 
     # 3. Get Artworks and Profile Picture
     sort_by = request.GET.get('sort', 'latest')
-    selected_category = request.GET.get('category', '')
+    selected_categories = request.GET.getlist('category')
 
     artworks_query = Artwork.objects.filter(artist=artist).select_related('category').annotate(
         stock_order=Case(
@@ -2669,8 +2747,8 @@ def artist_detail(request, artist_id):
         sold_count=Sum('orderdetail__quantity')
     )
 
-    if selected_category:
-        artworks_query = artworks_query.filter(category_id=selected_category)
+    if selected_categories:
+        artworks_query = artworks_query.filter(category_id__in=selected_categories)
 
     sort_mapping = {
         'latest': '-prod_id',
@@ -2695,7 +2773,7 @@ def artist_detail(request, artist_id):
         'artist_products_querystring': artist_products_querystring,
         'artist_categories': artist_categories,
         'current_sort': sort_by,
-        'selected_category': selected_category,
+        'selected_categories': selected_categories,
         'address': None,
         'prev_id': prev_id,
         'next_id': next_id
@@ -2736,14 +2814,16 @@ def category_detail(request, cat_id):
 def search_results(request):
     # 1. Get Parameters
     query = (request.GET.get('q') or '').strip()
-    selected_category = request.GET.get('category', '')
+    selected_categories = request.GET.getlist('category')
     sort_by = request.GET.get('sort', 'latest')
 
     # 2. Fetch categories for the dropdown (Mandatory for UI)
     search_categories = Category.objects.all().order_by('category_name')
-    selected_category_obj = None
-    if selected_category and selected_category.isdigit():
-        selected_category_obj = search_categories.filter(category_id=selected_category).first()
+    selected_category_objs = None
+    if selected_categories:
+        valid_ids = [cat_id for cat_id in selected_categories if cat_id.isdigit()]
+        if valid_ids:
+            selected_category_objs = search_categories.filter(category_id__in=valid_ids)
 
     # 3. Base Querysets with Annotations (for popularity/sales)
     # This ensures we have the data needed to sort correctly
@@ -2768,13 +2848,13 @@ def search_results(request):
     else:
         # If no query and no category, you might want to show nothing or all. 
         # Here we allow browsing by category even if query is empty.
-        if not selected_category_obj:
+        if not selected_category_objs:
             artworks_query = Artwork.objects.none()
             artists_query = Artist.objects.none()
 
     # 5. STEP 2: Category Filtering (Applies to the searched items)
-    if selected_category_obj:
-        artworks_query = artworks_query.filter(category=selected_category_obj)
+    if selected_category_objs:
+        artworks_query = artworks_query.filter(category__in=selected_category_objs)
         # Usually hide general artist matches when a specific category is selected
         if not query:
             artists_query = Artist.objects.none()
@@ -2797,10 +2877,10 @@ def search_results(request):
         'artworks': matched_artworks,
         'results_count': matched_artworks.count() + matched_artists.count(),
         'search_categories': search_categories, # For the loop
-        'selected_category': selected_category, # String ID for the "selected" check
-        'selected_category_obj': selected_category_obj,
+        'selected_categories': selected_categories, # For the checkboxes
+        'selected_category_objs': selected_category_objs,
         'current_sort': sort_by,
-        'has_search_filters': bool(query or selected_category_obj),
+        'has_search_filters': bool(query or selected_category_objs),
     }
 
     return render(request, 'products/search_results.html', context)

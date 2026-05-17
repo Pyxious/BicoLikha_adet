@@ -563,6 +563,12 @@
            ARTISTS
         </a>
 
+        <!-- CATEGORIES LINK -->
+        <a href="{% url 'categories_overview' %}" 
+           class="nav-link-custom {% if request.resolver_match.url_name == 'categories_overview' %}active-page{% endif %}">
+           CATEGORIES
+        </a>
+
         <!-- POPULAR LINK -->
         <a href="{% url 'popular' %}" 
            class="nav-link-custom {% if request.resolver_match.url_name == 'popular' %}active-page{% endif %}">

@@ -77,31 +77,31 @@
             <div class="apply-grid">
                 <div>
                     <label class="apply-label">Full Name</label>
-                    <input type="text" name="applicant_name" class="apply-input" value="{{ initial_name }}" required>
+                    <input type="text" name="applicant_name" class="apply-input" value="{{ submitted.applicant_name|default:initial_name }}" required>
                 </div>
                 <div>
                     <label class="apply-label">Email</label>
-                    <input type="email" name="applicant_email" class="apply-input" value="{{ initial_email }}" required>
+                    <input type="email" name="applicant_email" class="apply-input" value="{{ submitted.applicant_email|default:initial_email }}" required>
                 </div>
                 <div>
                     <label class="apply-label">Phone Number</label>
-                    <input type="text" name="applicant_phone" class="apply-input" value="{{ initial_phone }}" required>
+                    <input type="text" name="applicant_phone" class="apply-input" value="{{ submitted.applicant_phone|default:initial_phone }}" required>
                 </div>
                 <div>
                     <label class="apply-label">Artist Name</label>
-                    <input type="text" name="artist_name" class="apply-input" value="{{ initial_name }}" required>
+                    <input type="text" name="artist_name" class="apply-input" value="{{ submitted.artist_name|default:initial_name }}" required>
                 </div>
                 <div>
                     <label class="apply-label">Municipality</label>
-                    <input type="text" name="artist_municipality" class="apply-input" value="{{ initial_municipality }}" required>
+                    <input type="text" name="artist_municipality" class="apply-input" value="{{ submitted.artist_municipality|default:initial_municipality }}" required>
                 </div>
                 <div>
                     <label class="apply-label">Barangay</label>
-                    <input type="text" name="artist_brgy" class="apply-input" value="{{ initial_brgy }}" required>
+                    <input type="text" name="artist_brgy" class="apply-input" value="{{ submitted.artist_brgy|default:initial_brgy }}" required>
                 </div>
                 <div>
                     <label class="apply-label">ZIP Code</label>
-                    <input type="text" name="artist_zipcode" class="apply-input" value="{{ initial_zipcode }}" required>
+                    <input type="text" name="artist_zipcode" class="apply-input" value="{{ submitted.artist_zipcode|default:initial_zipcode }}" required>
                 </div>
                 <div class="full">
                     <label class="apply-label">Artist Profile Photo</label>
@@ -109,7 +109,7 @@
                 </div>
                 <div class="full">
                     <label class="apply-label">Artist Description</label>
-                    <textarea name="artist_description" class="apply-input" rows="4" required></textarea>
+                    <textarea name="artist_description" class="apply-input" rows="4" required>{{ submitted.artist_description|default:'' }}</textarea>
                 </div>
             </div>
         </div>
@@ -382,5 +382,56 @@ function escapeHtml(value) {
 function escapeAttr(value) {
     return escapeHtml(value).replace(/`/g, '&#096;');
 }
+
+// ── Auto-restore products from a failed POST submission ──────────────────────
+{% if submitted_products %}
+(function restoreProducts() {
+    const products = {{ submitted_products_json|safe }};
+    products.forEach(function(p) {
+        productKey += 1;
+        const key = productKey;
+        const summaryCategory = p.new_cat || p.cat_name || 'No category';
+
+        const htmlContent = `
+<div class="product-list-card">
+    <div class="product-thumb" id="thumb-${key}">${p.img_data ? `<img src="${p.img_data}" alt="">` : '<i class="fas fa-image"></i>'}</div>
+    <div>
+        <div class="d-flex justify-content-between gap-3">
+            <h4 class="product-name">${escapeHtml(p.name)}</h4>
+            <div class="product-price">PHP ${Number(p.price).toFixed(2)}</div>
+        </div>
+        <div class="product-desc">${escapeHtml(p.description)}</div>
+        <span class="product-pill"><i class="fas fa-tag"></i>${escapeHtml(summaryCategory)}</span>
+        <span class="product-pill"><i class="fas fa-box"></i>${escapeHtml(String(p.stock))} stock</span>
+    </div>
+    <div class="product-tools">
+        <button type="button" class="product-remove-btn" onclick="event.stopPropagation(); this.closest('.product-entry').remove(); updateProductsEmptyState();">
+            <i class="fas fa-trash-alt me-1"></i>Remove
+        </button>
+    </div>
+</div>
+<div style="display:none">
+    <input type="hidden" name="product_key" value="${key}">
+    <input type="hidden" name="prod_name_${key}" value="${escapeAttr(p.name)}">
+    <input type="hidden" name="prod_price_${key}" value="${escapeAttr(String(p.price))}">
+    <input type="hidden" name="prod_stock_qty_${key}" value="${escapeAttr(String(p.stock))}">
+    <input type="hidden" name="category_id_${key}" value="${escapeAttr(p.cat_id)}">
+    <input type="hidden" name="new_category_${key}" value="${escapeAttr(p.new_cat)}">
+    <textarea name="prod_description_${key}">${escapeHtml(p.description)}</textarea>
+    ${p.img_data ? `<input type="hidden" name="prod_image_data_${key}" value="${escapeAttr(p.img_data)}">` : ''}
+    ${p.img_filename ? `<input type="hidden" name="prod_image_filename_${key}" value="${escapeAttr(p.img_filename)}">` : ''}
+</div>`;
+
+        const entry = document.createElement('div');
+        entry.className = 'product-entry';
+        entry.setAttribute('data-product-key', key);
+        entry.onclick = function() { editDraftProduct(key); };
+        entry.innerHTML = htmlContent;
+        document.getElementById('productsStack').appendChild(entry);
+    });
+    updateProductsEmptyState();
+})();
+{% endif %}
 </script>
 {% endblock %}
+
